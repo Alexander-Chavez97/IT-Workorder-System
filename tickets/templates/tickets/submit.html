@@ -1,0 +1,223 @@
+{% extends "tickets/base.html" %}
+{% block title %}Submit Ticket{% endblock %}
+{% block nav_submit %}active{% endblock %}
+
+{% block content %}
+<div class="ph">
+  <h1>IT Support Request</h1>
+  <p>Submit a work order. The 4-tier routing engine auto-assigns your ticket based on department, category, sub-type, and keyword detection.</p>
+</div>
+
+{% if messages %}
+  {% for msg in messages %}
+    <div class="alert alert-{{ msg.tags }}">&#10003; {{ msg }}</div>
+  {% endfor %}
+{% endif %}
+
+<div class="card">
+  <form method="POST" id="ticketForm">
+    {% csrf_token %}
+
+    <!-- TIER 1: Requestor -->
+    <div class="sec">
+      <div class="sec-title">
+        Requestor Information
+        <span class="tier-tag">Tier 1 &mdash; Dept Classification</span>
+      </div>
+      <div class="row">
+        <div class="fld">
+          <label for="id_name">Full Name <span class="req">*</span></label>
+          {{ form.name }}
+        </div>
+        <div class="fld">
+          <label for="id_employee_id">Employee ID <span class="req">*</span></label>
+          {{ form.employee_id }}
+        </div>
+      </div>
+      <div class="row">
+        <div class="fld">
+          <label for="id_department">Department <span class="req">*</span></label>
+          {{ form.department }}
+          <div class="dtb" id="deptBadge"></div>
+        </div>
+        <div class="fld">
+          <label for="id_email">Contact Email <span class="req">*</span></label>
+          {{ form.email }}
+        </div>
+      </div>
+    </div>
+
+    <!-- TIER 2–4: Issue Details -->
+    <div class="sec">
+      <div class="sec-title">
+        Issue Details
+        <span class="tier-tag">Tier 2 &mdash; Category &amp; Team</span>
+      </div>
+      <div class="row">
+        <div class="fld">
+          <label for="id_category">Category <span class="req">*</span></label>
+          {{ form.category }}
+        </div>
+        <div class="fld">
+          <label for="id_subtype">Sub-Type <span class="tier-tag" style="margin-left:4px">Tier 3 &mdash; Modifier</span></label>
+          {{ form.subtype }}
+        </div>
+      </div>
+      <div class="row row1">
+        <div class="fld">
+          <label for="id_title">Brief Summary <span class="req">*</span></label>
+          {{ form.title }}
+        </div>
+      </div>
+      <div class="row row1">
+        <div class="fld">
+          <label for="id_description">
+            Detailed Description
+            <span class="tier-tag" style="margin-left:4px">Tier 4 &mdash; Keyword Detection</span>
+          </label>
+          {{ form.description }}
+        </div>
+      </div>
+      <div class="row row3">
+        <div class="fld">
+          <label for="id_asset_tag">Asset Tag</label>
+          {{ form.asset_tag }}
+        </div>
+        <div class="fld">
+          <label for="id_location">Location</label>
+          {{ form.location }}
+        </div>
+        <div class="fld">
+          <label for="id_phone_ext">Phone Extension</label>
+          {{ form.phone_ext }}
+        </div>
+      </div>
+    </div>
+
+    <!-- PRIORITY -->
+    <div class="sec" style="padding-bottom:20px">
+      <div class="sec-title">
+        Priority
+        <span class="tier-tag">Auto-suggested from all 4 tiers &mdash; override below</span>
+      </div>
+      <div class="pri-grid">
+        {% for value, label in form.fields.user_priority.choices %}
+          <div class="pri-wrap p{{ value }}">
+            <input type="radio" name="user_priority" id="pr{{ value }}" value="{{ value }}"
+              {% if value == 4 %}checked{% endif %} onchange="liveRoute()">
+            <label for="pr{{ value }}">
+              <div class="dot"></div>
+              <div class="pn">{{ label|truncatechars:10 }}</div>
+              <div class="pd">
+                {% if value == 1 %}City/dept-wide down{% endif %}
+                {% if value == 2 %}Team work halted{% endif %}
+                {% if value == 3 %}Workaround exists{% endif %}
+                {% if value == 4 %}Minor, no stoppage{% endif %}
+              </div>
+              <span class="atag">SUGGESTED</span>
+            </label>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+  </form><!-- end form (actions are outside so the routing panel can sit between) -->
+</div>
+
+<!-- LIVE ROUTING PANEL (populated by JS via /api/route/) -->
+<div class="rp" id="routingPanel">
+  <div class="rp-head">&#9889; Live Routing Decision</div>
+  <div class="rp-body">
+    <div class="rp-chain" id="rpChain"></div>
+    <div class="rp-meta" id="rpMeta"></div>
+    <div class="rp-reasons" id="rpReasons"></div>
+  </div>
+</div>
+
+<div style="display:flex;justify-content:flex-end;gap:10px;padding:12px 0 0">
+  <a href="{% url 'submit_ticket' %}" class="btn btn-ghost">Clear</a>
+  <button type="submit" form="ticketForm" class="btn btn-primary">Submit Work Order &rarr;</button>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const ROUTE_URL = "{% url 'live_route' %}";
+const TIER_META = {
+  CRITICAL_INFRA: {label:"Critical Infrastructure", icon:"🔴", cls:"dtb-CRITICAL_INFRA"},
+  EXECUTIVE:      {label:"Executive",               icon:"🟡", cls:"dtb-EXECUTIVE"},
+  PUBLIC_SAFETY:  {label:"Public Safety Support",   icon:"🟣", cls:"dtb-PUBLIC_SAFETY"},
+  STANDARD:       {label:"Standard",                icon:"⚪", cls:"dtb-STANDARD"},
+};
+const PL = {1:"Critical",2:"High",3:"Medium",4:"Low"};
+const PB = {1:"bp1",2:"bp2",3:"bp3",4:"bp4"};
+
+let _debounce = null;
+
+function liveRoute() {
+  clearTimeout(_debounce);
+  _debounce = setTimeout(_fetchRoute, 280);
+}
+
+function _fetchRoute() {
+  const dept  = document.getElementById("f_dept")?.value || "";
+  const cat   = document.getElementById("f_cat")?.value  || "";
+  const sub   = document.getElementById("f_sub")?.value  || "";
+  const pri   = document.querySelector('input[name="user_priority"]:checked')?.value || "4";
+  const title = document.getElementById("f_title")?.value || "";
+  const desc  = document.getElementById("f_desc")?.value  || "";
+
+  // Update dept tier badge locally (no fetch needed)
+  const badge = document.getElementById("deptBadge");
+  if (dept && TIER_META[_tierOf(dept)]) {
+    const m = TIER_META[_tierOf(dept)];
+    badge.className = "dtb show " + m.cls;
+    badge.innerHTML = "<strong>" + m.icon + " " + m.label + "</strong>";
+  } else {
+    badge.className = "dtb";
+  }
+
+  if (!dept || !cat) { document.getElementById("routingPanel").classList.remove("show"); return; }
+
+  const params = new URLSearchParams({dept, category:cat, subtype:sub, priority:pri, text:title+" "+desc});
+  fetch(ROUTE_URL + "?" + params)
+    .then(r => r.json())
+    .then(data => {
+      if (!data.ready) return;
+      _renderPanel(data);
+      _suggestPriority(data.suggested_priority);
+    });
+}
+
+// Simple dept→tier lookup (mirrors routing.py DEPARTMENT_TIERS)
+const DEPT_TIERS = {
+  "Police Department":"CRITICAL_INFRA","Fire Department":"CRITICAL_INFRA","Utilities":"CRITICAL_INFRA",
+  "City Manager's Office":"EXECUTIVE","Health Department":"PUBLIC_SAFETY"
+};
+function _tierOf(dept){ return DEPT_TIERS[dept] || "STANDARD"; }
+
+function _suggestPriority(s) {
+  for (let i=1;i<=4;i++) {
+    const lbl = document.querySelector('label[for="pr'+i+'"]');
+    if (lbl) lbl.classList.toggle("suggested", i===s);
+  }
+}
+
+function _renderPanel(d) {
+  document.getElementById("routingPanel").classList.add("show");
+  // Escalation chain
+  document.getElementById("rpChain").innerHTML = d.escalation_path.map((s,i) =>
+    (i>0?'<span class="rp-arr">&rarr;</span>':'')+
+    '<span class="rp-step'+(i===0?' act':'')+(i===d.escalation_path.length-1&&d.effective_priority<=2?' esc':'')+'">'+s+'</span>'
+  ).join('');
+  // Meta
+  document.getElementById("rpMeta").innerHTML =
+    '<div class="kv"><span>Team</span><strong>'+d.team+'</strong></div>' +
+    '<div class="kv"><span>Eff. Priority</span><strong><span class="badge '+PB[d.effective_priority]+'">'+d.priority_label+'</span>'+(d.was_modified?' <span style="font-size:10px;color:var(--amber-2)">(auto-adjusted)</span>':'')+' </strong></div>' +
+    '<div class="kv"><span>SLA Target</span><strong>'+d.sla+'</strong></div>' +
+    '<div class="kv"><span>Dept Tier</span><strong style="color:var(--steel-2)">'+d.tier_icon+' '+d.tier_label+'</strong></div>';
+  // Reasons
+  document.getElementById("rpReasons").innerHTML = d.reasons.map(r=>'&bull; '+r).join('<br>');
+}
+</script>
+{% endblock %}

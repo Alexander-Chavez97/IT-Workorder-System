@@ -1,0 +1,89 @@
+{% extends "tickets/base.html" %}
+{% block title %}Admin Queue{% endblock %}
+{% block nav_admin %}active{% endblock %}
+
+{% block content %}
+<div class="ph">
+  <h1>Admin Queue</h1>
+  <p>All work orders with routing metadata. Click any row to view, escalate, or resolve.</p>
+</div>
+
+<!-- STATS -->
+<div class="stats-row">
+  <div class="stat"><div class="n" style="color:var(--gold)">{{ stats.total }}</div><div class="l">Total</div></div>
+  <div class="stat"><div class="n" style="color:var(--green-2)">{{ stats.open }}</div><div class="l">Open</div></div>
+  <div class="stat"><div class="n" style="color:var(--red-2)">{{ stats.critical }}</div><div class="l">Critical</div></div>
+  <div class="stat"><div class="n" style="color:var(--red-2)">{{ stats.infra }}</div><div class="l">Infra Dept</div></div>
+  <div class="stat"><div class="n" style="color:var(--amber-2)">{{ stats.in_progress }}</div><div class="l">In Progress</div></div>
+</div>
+
+<!-- FILTER FORM -->
+<form method="GET" style="margin-bottom:0">
+  <div class="table-card">
+    <div class="ttb">
+      <span class="ttb-title">Work Orders</span>
+      <div class="ttb-filters">
+        <select class="fslt" name="status" onchange="this.form.submit()">
+          {% for val, lbl in status_choices %}
+            <option value="{{ val }}" {% if val == status_filter %}selected{% endif %}>{{ lbl }}</option>
+          {% endfor %}
+        </select>
+        <select class="fslt" name="priority" onchange="this.form.submit()">
+          {% for val, lbl in priority_choices %}
+            <option value="{{ val }}" {% if val == priority_filter %}selected{% endif %}>{{ lbl }}</option>
+          {% endfor %}
+        </select>
+        <select class="fslt" name="tier" onchange="this.form.submit()">
+          {% for val, lbl in tier_choices %}
+            <option value="{{ val }}" {% if val == tier_filter %}selected{% endif %}>{{ lbl }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Dept / Tier</th>
+          <th>Category</th>
+          <th>Summary</th>
+          <th>Eff. Priority</th>
+          <th>Assigned Team</th>
+          <th>SLA</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ticket in tickets %}
+        <tr onclick="window.location='{% url 'ticket_detail' ticket.ticket_id %}'" style="cursor:pointer">
+          <td><span class="tid">{{ ticket.ticket_id }}</span></td>
+          <td class="{{ ticket.tier_badge_class }}">
+            <span class="tdot"></span>
+            <div style="font-weight:500;font-size:12px">{{ ticket.department }}</div>
+            <div style="font-size:10px;color:var(--steel)">{{ ticket.routing_tier_label }}</div>
+          </td>
+          <td style="text-transform:capitalize;font-size:11px;color:var(--steel-2)">{{ ticket.category }}</td>
+          <td style="max-width:185px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ ticket.title }}</td>
+          <td>
+            <span class="badge {{ ticket.priority_badge_class }}">{{ ticket.effective_priority_label }}</span>
+            {% if ticket.routing_was_modified %}
+              <span title="Auto-adjusted" style="font-size:9px;color:var(--amber-2);margin-left:2px">&#9650;</span>
+            {% endif %}
+          </td>
+          <td style="font-size:11px;color:var(--steel-2)">{{ ticket.routing_team }}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--gold)">{{ ticket.routing_sla }}</td>
+          <td><span class="badge {{ ticket.status_badge_class }}">{{ ticket.status }}</span></td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="8" style="text-align:center;padding:24px;color:var(--steel)">
+            No tickets match the selected filters.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</form>
+{% endblock %}

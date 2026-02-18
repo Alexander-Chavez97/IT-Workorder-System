@@ -1,0 +1,114 @@
+{% extends "tickets/base.html" %}
+{% block title %}Routing Reference{% endblock %}
+{% block nav_ref %}active{% endblock %}
+
+{% block content %}
+<div class="ph">
+  <h1>Routing Logic Reference</h1>
+  <p>Four-tier hierarchical engine. All data on this page is rendered directly from <code style="font-family:'IBM Plex Mono',monospace;color:var(--gold);font-size:12px">tickets/routing.py</code> — no hardcoding in the template.</p>
+</div>
+
+<!-- TIER 1 -->
+<div class="ref-grid">
+  <div class="ref-tier CRITICAL_INFRA">
+    <h4>🔴 Tier 1A &mdash; Critical Infrastructure</h4>
+    {% for dept, tier in dept_tiers.items %}{% if tier == "CRITICAL_INFRA" %}
+    <div class="ref-row"><span class="ref-dept">{{ dept }}</span><span class="rm boost">P-floor 2 &middot; SLA &times;0.5</span></div>
+    {% endif %}{% endfor %}
+    <p style="font-size:11px;color:var(--steel-2);margin-top:10px;line-height:1.5">Any ticket auto-elevated to at least High. Network/server/security categories force Critical.</p>
+  </div>
+  <div class="ref-tier EXECUTIVE">
+    <h4>🟡 Tier 1B &mdash; Executive</h4>
+    {% for dept, tier in dept_tiers.items %}{% if tier == "EXECUTIVE" %}
+    <div class="ref-row"><span class="ref-dept">{{ dept }}</span><span class="rm vip">VIP &middot; P-floor 2</span></div>
+    {% endif %}{% endfor %}
+    <p style="font-size:11px;color:var(--steel-2);margin-top:10px;line-height:1.5">Minimum High priority with team lead awareness.</p>
+  </div>
+  <div class="ref-tier PUBLIC_SAFETY">
+    <h4>🟣 Tier 1C &mdash; Public Safety Support</h4>
+    {% for dept, tier in dept_tiers.items %}{% if tier == "PUBLIC_SAFETY" %}
+    <div class="ref-row"><span class="ref-dept">{{ dept }}</span><span class="rm lift">P-floor 3 &middot; SLA &times;0.75</span></div>
+    {% endif %}{% endfor %}
+    <p style="font-size:11px;color:var(--steel-2);margin-top:10px;line-height:1.5">Public-facing departments: elevated to at least Medium with tighter SLAs.</p>
+  </div>
+  <div class="ref-tier STANDARD">
+    <h4>⚪ Tier 1D &mdash; Standard Departments</h4>
+    {% for dept, tier in dept_tiers.items %}{% if tier == "STANDARD" %}
+    <div class="ref-row"><span class="ref-dept">{{ dept }}</span><span class="rm std">No modifier</span></div>
+    {% endif %}{% endfor %}
+    <p style="font-size:11px;color:var(--steel-2);margin-top:10px;line-height:1.5">No tier modifier. User selection + category determine assignment.</p>
+  </div>
+</div>
+
+<!-- TIER 2 -->
+<div class="card" style="margin-top:20px;padding:20px 24px">
+  <div class="sec-title">Tier 2 &mdash; Category &rarr; Team Mapping</div>
+  <table class="ct">
+    <thead><tr><th>Category</th><th>Standard Team</th><th>Critical Infra Override</th></tr></thead>
+    <tbody>
+      {% for cat, teams in category_teams.items %}
+      <tr>
+        <td>{{ cat }}</td>
+        <td>{{ teams.standard }}</td>
+        <td>{{ teams.critical_infra }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- TIER 3 -->
+<div class="card" style="margin-top:16px;padding:20px 24px">
+  <div class="sec-title">Tier 3 &mdash; Sub-Type Modifiers</div>
+  <table class="ct">
+    <thead><tr><th>Sub-Type</th><th>Priority Bump</th><th>CI Force P1</th><th>Cap</th></tr></thead>
+    <tbody>
+      {% for sub, rule in subtype_rules.items %}
+      <tr>
+        <td>{{ sub }}</td>
+        <td>{% if rule.bump %}+{{ rule.bump }}{% else %}&mdash;{% endif %}</td>
+        <td>{% if rule.ci_force_p1 %}<span style="color:var(--red-2)">Yes</span>{% else %}&mdash;{% endif %}</td>
+        <td>{% if rule.cap %}P{{ rule.cap }} max{% else %}&mdash;{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- TIER 4 -->
+<div class="card" style="margin-top:16px;padding:20px 24px">
+  <div class="sec-title">Tier 4 &mdash; Keyword Detection</div>
+  <table class="ct">
+    <thead><tr><th>Keywords</th><th>Effect</th><th>Note</th></tr></thead>
+    <tbody>
+      {% for rule in keyword_rules %}
+      <tr>
+        <td style="font-size:10px">{{ rule.keywords|join:", " }}</td>
+        <td>
+          {% if rule.force %}Force P{{ rule.force }}
+          {% elif rule.bump %}+{{ rule.bump }} bump
+          {% endif %}
+        </td>
+        <td>{{ rule.note }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- SLA MATRIX -->
+<div class="card" style="margin-top:16px;padding:20px 24px">
+  <div class="sec-title">SLA Matrix</div>
+  <table class="ct">
+    <thead><tr><th>Dept Tier</th><th>P1 Critical</th><th>P2 High</th><th>P3 Medium</th><th>P4 Low</th></tr></thead>
+    <tbody>
+      {% for tier, slas in sla_matrix.items %}
+      <tr>
+        <td>{{ tier }}</td>
+        {% for pri, sla in slas.items %}<td>{{ sla }}</td>{% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

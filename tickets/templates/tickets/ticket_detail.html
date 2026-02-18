@@ -1,0 +1,114 @@
+{% extends "tickets/base.html" %}
+{% block title %}{{ ticket.ticket_id }}{% endblock %}
+{% block nav_admin %}active{% endblock %}
+
+{% block content %}
+<div class="ph">
+  <h1>{{ ticket.ticket_id }}</h1>
+  <p>{{ ticket.title }}</p>
+</div>
+
+<div class="detail-grid">
+
+  <!-- LEFT: Ticket info -->
+  <div style="display:flex;flex-direction:column;gap:16px">
+
+    <div class="card">
+      <div class="sec">
+        <div class="sec-title">Requestor</div>
+        <div class="mrow"><span class="mk">Name</span><span class="mv">{{ ticket.name }} ({{ ticket.employee_id }})</span></div>
+        <div class="mrow"><span class="mk">Department</span>
+          <span class="mv">{{ ticket.department }}
+            <span style="font-size:10px;color:var(--steel-2);margin-left:6px">{{ ticket.routing_tier_label }}</span>
+          </span>
+        </div>
+        <div class="mrow"><span class="mk">Email</span><span class="mv">{{ ticket.email }}</span></div>
+        {% if ticket.location %}<div class="mrow"><span class="mk">Location</span><span class="mv">{{ ticket.location }}</span></div>{% endif %}
+        {% if ticket.phone_ext %}<div class="mrow"><span class="mk">Phone Ext</span><span class="mv">{{ ticket.phone_ext }}</span></div>{% endif %}
+      </div>
+
+      <div class="sec">
+        <div class="sec-title">Issue</div>
+        <div class="mrow"><span class="mk">Category</span><span class="mv" style="text-transform:capitalize">{{ ticket.category }}{% if ticket.subtype %} &middot; {{ ticket.subtype }}{% endif %}</span></div>
+        {% if ticket.asset_tag %}<div class="mrow"><span class="mk">Asset Tag</span><span class="mv">{{ ticket.asset_tag }}</span></div>{% endif %}
+        {% if ticket.description %}
+        <div style="margin-top:10px">
+          <div style="font-size:10px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.1em;color:var(--steel);margin-bottom:6px">Description</div>
+          <div style="font-size:12px;color:var(--steel-2);line-height:1.6">{{ ticket.description }}</div>
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="sec" style="padding-bottom:20px">
+        <div class="sec-title">Priority</div>
+        <div class="mrow"><span class="mk">User-Selected</span><span class="mv"><span class="badge {{ ticket.priority_badge_class }}" style="opacity:.6">{{ ticket.user_priority_label }}</span></span></div>
+        <div class="mrow"><span class="mk">Effective</span>
+          <span class="mv">
+            <span class="badge {{ ticket.priority_badge_class }}">{{ ticket.effective_priority_label }}</span>
+            {% if ticket.routing_was_modified %}<span style="font-size:10px;color:var(--amber-2);margin-left:6px">(auto-elevated)</span>{% endif %}
+          </span>
+        </div>
+        <div class="mrow"><span class="mk">Status</span><span class="mv"><span class="badge {{ ticket.status_badge_class }}">{{ ticket.status }}</span></span></div>
+        <div class="mrow"><span class="mk">Submitted</span><span class="mv">{{ ticket.submitted_at|date:"N j, Y g:i A" }}</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT: Routing card + actions -->
+  <div style="display:flex;flex-direction:column;gap:16px">
+
+    <div class="card">
+      <div class="sec" style="padding-bottom:20px">
+        <div class="sec-title">Routing Decision</div>
+        <div class="mrc" style="margin-bottom:14px">
+          <h4>Escalation Path</h4>
+          <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin-bottom:12px">
+            {% for step in ticket.escalation_path_list %}
+              {% if not forloop.first %}<span class="rp-arr">&rarr;</span>{% endif %}
+              <span class="rp-step {% if forloop.first %}act{% endif %}">{{ step }}</span>
+            {% endfor %}
+          </div>
+          <div class="mrow"><span class="mk">Team</span><span class="mv" style="font-weight:600">{{ ticket.routing_team }}</span></div>
+          <div class="mrow"><span class="mk">SLA</span><span class="mv" style="color:var(--gold);font-family:'IBM Plex Mono',monospace">{{ ticket.routing_sla }}</span></div>
+        </div>
+
+        {% if ticket.routing_reasons_list %}
+        <div style="font-size:10px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin-bottom:8px">
+          {{ ticket.routing_reasons_list|length }} Rule{{ ticket.routing_reasons_list|length|pluralize }} Applied
+        </div>
+        {% for reason in ticket.routing_reasons_list %}
+          <div style="font-size:11px;color:var(--steel-2);margin-bottom:5px;font-style:italic">&bull; {{ reason }}</div>
+        {% endfor %}
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- ACTIONS -->
+    <div class="card">
+      <div class="sec" style="padding-bottom:20px">
+        <div class="sec-title">Actions</div>
+        <form method="POST" style="display:flex;flex-direction:column;gap:10px">
+          {% csrf_token %}
+          {% if ticket.routing_effective_priority > 1 %}
+          <button type="submit" name="action" value="escalate" class="btn btn-danger btn-sm" style="width:100%">
+            Escalate Priority &uarr;
+          </button>
+          {% endif %}
+          {% if ticket.status != "Closed" %}
+          <button type="submit" name="action" value="resolve" class="btn btn-success btn-sm" style="width:100%">
+            Mark Resolved &#10003;
+          </button>
+          {% endif %}
+        </form>
+        <div style="margin-top:12px">
+          <a href="{% url 'admin_queue' %}" class="btn btn-ghost btn-sm" style="width:100%;text-align:center">
+            &larr; Back to Queue
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
