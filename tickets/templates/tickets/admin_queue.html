@@ -77,7 +77,7 @@
       </thead>
       <tbody>
         {% for ticket in tickets %}
-        <tr onclick="window.location.href='{% url 'ticket_detail' ticket.ticket_id %}';" style="cursor:pointer">
+        <tr onclick="window.location='{% url 'ticket_detail' ticket.ticket_id %}'" style="cursor:pointer">
           <td><span class="tid">{{ ticket.ticket_id }}</span></td>
           <td class="{{ ticket.tier_badge_class }}">
             <span class="tdot"></span>
