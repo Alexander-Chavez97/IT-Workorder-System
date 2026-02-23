@@ -237,10 +237,17 @@ tbody td{padding:11px 14px;font-size:12px;vertical-align:middle;}
   </a>
   <div class="nav-links">
     <a class="nav-link {% block nav_submit %}{% endblock %}" href="{% url 'submit_ticket' %}">Submit Ticket</a>
-    <a class="nav-link {% block nav_admin %}{% endblock %}" href="{% url 'admin_queue' %}">
-      Admin Queue
-    </a>
+    <a class="nav-link {% block nav_admin %}{% endblock %}" href="{% url 'admin_queue' %}">Admin Queue</a>
     <a class="nav-link {% block nav_ref %}{% endblock %}" href="{% url 'routing_reference' %}">Routing Ref</a>
+    {% if request.session.employee_name %}
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--steel-2);padding:0 10px;display:flex;align-items:center;gap:6px;border-left:1px solid var(--border)">
+        <span style="color:var(--gold)">&#9654;</span>
+        {{ request.session.employee_name }}
+      </span>
+      <a class="nav-link" href="{% url 'employee_logout' %}" style="color:var(--red-2)">Sign Out</a>
+    {% else %}
+      <a class="nav-link" href="{% url 'employee_login' %}" style="border-color:rgba(201,168,76,.3)">Sign In</a>
+    {% endif %}
   </div>
 </nav>
 

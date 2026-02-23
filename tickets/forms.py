@@ -2,8 +2,9 @@
 tickets/forms.py
 ================
 Django form for ticket submission.
-Choices are imported directly from routing.py so the form and routing engine
-always stay in sync — no duplication.
+Choices are sourced from routing.py — the form and routing engine stay in sync.
+Sub-type and issue_type dropdowns are filtered client-side via JS cascade;
+the full flat choice lists here serve as server-side validation fallback.
 """
 
 from django import forms
@@ -12,6 +13,7 @@ from .routing import (
     DEPARTMENT_CHOICES,
     CATEGORY_CHOICES,
     SUBTYPE_CHOICES,
+    ISSUE_TYPE_CHOICES,
     PRIORITY_CHOICES,
 )
 from .models import Ticket
@@ -20,7 +22,8 @@ from .models import Ticket
 class TicketSubmitForm(forms.ModelForm):
     """
     Form used by employees to submit a new work order.
-    Maps directly to the Ticket model fields that belong to the user.
+    The category → subtype → issue_type cascade is driven by JS in submit.html.
+    Server-side validation still checks against the full flat choice lists.
     """
 
     department = forms.ChoiceField(
@@ -29,12 +32,17 @@ class TicketSubmitForm(forms.ModelForm):
     )
     category = forms.ChoiceField(
         choices=[("", "— Select Category —")] + list(CATEGORY_CHOICES),
-        widget=forms.Select(attrs={"id": "f_cat", "onchange": "liveRoute()"}),
+        widget=forms.Select(attrs={"id": "f_cat", "onchange": "onCategoryChange()"}),
     )
     subtype = forms.ChoiceField(
         choices=SUBTYPE_CHOICES,
         required=False,
-        widget=forms.Select(attrs={"id": "f_sub", "onchange": "liveRoute()"}),
+        widget=forms.Select(attrs={"id": "f_sub", "onchange": "onSubtypeChange()"}),
+    )
+    issue_type = forms.ChoiceField(
+        choices=ISSUE_TYPE_CHOICES,
+        required=False,
+        widget=forms.Select(attrs={"id": "f_issue", "onchange": "liveRoute()"}),
     )
     user_priority = forms.ChoiceField(
         choices=PRIORITY_CHOICES,
@@ -46,13 +54,13 @@ class TicketSubmitForm(forms.ModelForm):
         model = Ticket
         fields = [
             "name", "employee_id", "department", "email",
-            "category", "subtype", "title", "description",
+            "category", "subtype", "issue_type", "title", "description",
             "asset_tag", "location", "phone_ext", "user_priority",
         ]
         widgets = {
             "name":        forms.TextInput(attrs={"placeholder": "e.g. Maria Gonzalez", "id": "f_name"}),
-            "employee_id": forms.TextInput(attrs={"placeholder": "e.g. LRD-4821",       "id": "f_empid"}),
-            "email":       forms.EmailInput(attrs={"placeholder": "name@laredotx.gov",   "id": "f_email"}),
+            "employee_id": forms.TextInput(attrs={"placeholder": "e.g. LRD-4821", "id": "f_empid"}),
+            "email":       forms.EmailInput(attrs={"placeholder": "name@laredotx.gov", "id": "f_email"}),
             "title":       forms.TextInput(attrs={
                 "placeholder": "One-line summary of the issue",
                 "id": "f_title", "maxlength": "120", "oninput": "liveRoute()",

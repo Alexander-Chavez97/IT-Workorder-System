@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Employee Login — Laredo IST Work Order System</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Serif:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:#08111f; --navy-2:#0f1e35; --navy-3:#162845;
+  --gold:#c9a84c; --gold-2:#e2c060; --gold-dim:rgba(201,168,76,.12);
+  --gold-border:rgba(201,168,76,.3);
+  --steel:#6d8aaa; --steel-2:#a4bcd4;
+  --white:#eef2f8; --red:#b83232; --red-2:#e05050;
+  --border:rgba(201,168,76,.22);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body {
+  font-family:'IBM Plex Sans',sans-serif;
+  background:var(--navy);
+  color:var(--white);
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background-image:
+    radial-gradient(ellipse 120% 60% at 50% -10%, rgba(30,51,88,.8) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 50% at 0% 100%, rgba(42,111,212,.05) 0%, transparent 50%);
+}
+
+.login-wrap {
+  width: 100%;
+  max-width: 420px;
+  padding: 20px;
+}
+
+/* Seal */
+.seal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+.seal-star {
+  width: 60px; height: 60px;
+  background: var(--gold);
+  clip-path: polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%);
+}
+.seal-text { text-align: center; }
+.seal-text strong {
+  display: block;
+  font-family: 'IBM Plex Serif', serif;
+  font-size: 17px;
+  color: var(--white);
+  margin-bottom: 2px;
+}
+.seal-text span {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  color: var(--steel-2);
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+
+/* Card */
+.card {
+  background: rgba(15,30,53,.92);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  backdrop-filter: blur(12px);
+  overflow: hidden;
+}
+.card-head {
+  padding: 16px 24px;
+  background: var(--gold-dim);
+  border-bottom: 1px solid var(--gold-border);
+}
+.card-head h2 {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.card-head p {
+  font-size: 12px;
+  color: var(--steel-2);
+  margin-top: 3px;
+}
+.card-body {
+  padding: 24px;
+}
+
+/* Fields */
+.fld { margin-bottom: 16px; }
+.fld label {
+  display: block;
+  font-size: 11px;
+  color: var(--steel-2);
+  font-weight: 500;
+  letter-spacing: .04em;
+  margin-bottom: 5px;
+}
+.fld label .req { color: var(--gold); }
+.fld input {
+  width: 100%;
+  background: rgba(8,17,31,.8);
+  border: 1px solid rgba(109,138,170,.28);
+  border-radius: 6px;
+  color: var(--white);
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 13px;
+  padding: 10px 12px;
+  outline: none;
+  transition: border-color .18s, box-shadow .18s;
+}
+.fld input:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 2px rgba(201,168,76,.12);
+}
+.fld input::placeholder { color: rgba(164,188,212,.35); }
+
+/* Error */
+.error-msg {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(184,50,50,.12);
+  border: 1px solid rgba(224,80,80,.3);
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin-bottom: 18px;
+  font-size: 12px;
+  color: var(--red-2);
+}
+.error-icon { font-size: 15px; flex-shrink: 0; }
+
+/* Submit button */
+.btn-login {
+  width: 100%;
+  padding: 12px;
+  background: var(--gold);
+  color: var(--navy);
+  border: none;
+  border-radius: 6px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all .18s;
+  margin-top: 4px;
+}
+.btn-login:hover {
+  background: var(--gold-2);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 18px rgba(201,168,76,.25);
+}
+
+/* Divider + admin link */
+.card-foot {
+  padding: 14px 24px;
+  border-top: 1px solid rgba(201,168,76,.1);
+  text-align: center;
+  font-size: 11px;
+  color: var(--steel);
+}
+.card-foot a {
+  color: var(--gold);
+  text-decoration: none;
+  margin: 0 8px;
+}
+.card-foot a:hover { color: var(--gold-2); text-decoration: underline; }
+
+/* Seed hint */
+.hint {
+  margin-top: 20px;
+  padding: 12px 14px;
+  background: rgba(8,17,31,.6);
+  border: 1px solid rgba(109,138,170,.18);
+  border-radius: 6px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: var(--steel);
+  line-height: 1.7;
+}
+.hint strong { color: var(--steel-2); }
+</style>
+</head>
+<body>
+<div class="login-wrap">
+
+  <div class="seal">
+    <div class="seal-star"></div>
+    <div class="seal-text">
+      <strong>City of Laredo IST</strong>
+      <span>IT Work Order System</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <h2>Employee Sign-In</h2>
+      <p>Enter your credentials to submit and track IT work orders.</p>
+    </div>
+    <div class="card-body">
+
+      {% if error %}
+      <div class="error-msg">
+        <span class="error-icon">&#9888;</span>
+        <span>{{ error }}</span>
+      </div>
+      {% endif %}
+
+      <form method="POST" autocomplete="off">
+        {% csrf_token %}
+        <div class="fld">
+          <label for="employee_id">Employee ID <span class="req">*</span></label>
+          <input type="text" id="employee_id" name="employee_id"
+                 placeholder="e.g. LRD-1001"
+                 value="{{ request.POST.employee_id }}" required>
+        </div>
+        <div class="fld">
+          <label for="email">City Email Address <span class="req">*</span></label>
+          <input type="email" id="email" name="email"
+                 placeholder="name@laredotx.gov"
+                 value="{{ request.POST.email }}" required>
+        </div>
+        <div class="fld" style="margin-bottom:20px">
+          <label for="password">Password <span class="req">*</span></label>
+          <input type="password" id="password" name="password"
+                 placeholder="••••••••" required>
+        </div>
+        <button type="submit" class="btn-login">Sign In &rarr;</button>
+      </form>
+
+    </div>
+    <div class="card-foot">
+      <a href="{% url 'admin_queue' %}">Admin Queue (no login)</a>
+      &middot;
+      <a href="{% url 'routing_reference' %}">Routing Reference</a>
+    </div>
+  </div>
+
+  <!-- Development hint — remove in production -->
+  <div class="hint">
+    <strong>Test Credentials (after running seed_employees)</strong><br>
+    Employee ID: LRD-1001<br>
+    Email: m.gonzalez@laredotx.gov<br>
+    Password: Laredo2024!<br>
+    <br>
+    Run: <strong>python manage.py seed_employees</strong>
+  </div>
+
+</div>
+</body>
+</html>

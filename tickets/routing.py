@@ -379,16 +379,38 @@ class RoutingEngine:
                 )
                 ep = rule["cap"]
 
-        # ── TIER 4: Keyword detection ─────────────────────────────────────
+        # ── TIER 4: Keyword detection (exact + fuzzy spelling tolerance) ────
         combined = text.lower()
+        words    = combined.split()   # token list for fuzzy matching
+
         for kw_rule in KEYWORD_RULES:
-            matched_kw = next(
-                (kw for kw in kw_rule["keywords"] if kw in combined), None
-            )
+            matched_kw   = None
+            matched_fuzzy = False
+
+            for kw in kw_rule["keywords"]:
+                # 1. Exact / substring match first (fast path)
+                if kw in combined:
+                    matched_kw = kw
+                    break
+
+                # 2. Fuzzy token match — each word vs keyword
+                #    Only applied to single-word keywords (multi-word phrases
+                #    are checked via substring above).
+                if " " not in kw:
+                    import difflib
+                    close = difflib.get_close_matches(
+                        kw, words, n=1, cutoff=0.82
+                    )
+                    if close:
+                        matched_kw    = close[0]
+                        matched_fuzzy = True
+                        break
+
             if matched_kw:
+                fuzzy_note = f" (fuzzy match for '{kw}')" if matched_fuzzy else ""
                 if kw_rule["force"] is not None and ep > kw_rule["force"]:
                     reasons.append(
-                        f"Tier 4: keyword '{matched_kw}' detected "
+                        f"Tier 4: keyword '{matched_kw}'{fuzzy_note} detected "
                         f"— forced {PRIORITY_LABELS[kw_rule['force']]}. "
                         f"({kw_rule['note']})"
                     )
@@ -398,7 +420,7 @@ class RoutingEngine:
                     bumped = max(1, ep - kw_rule["bump"])
                     if bumped < ep:
                         reasons.append(
-                            f"Tier 4: keyword '{matched_kw}' detected "
+                            f"Tier 4: keyword '{matched_kw}'{fuzzy_note} detected "
                             f"— bumped to {PRIORITY_LABELS[bumped]}. "
                             f"({kw_rule['note']})"
                         )
@@ -469,25 +491,332 @@ CATEGORY_CHOICES = [
     ("data",     "Data & Reporting"),
 ]
 
-SUBTYPE_CHOICES = [
-    ("",               "— Optional —"),
-    ("complete_outage","Complete Outage / Not Working At All"),
-    ("no_boot",        "Not turning on / won't boot"),
-    ("slow",           "Slow performance / intermittent"),
-    ("display",        "Display / monitor issue"),
-    ("peripheral",     "Peripheral not recognized"),
-    ("app_crash",      "Application crash / error code"),
-    ("no_login",       "Cannot log in / locked out"),
-    ("no_internet",    "No internet / network access"),
-    ("slow_conn",      "Slow connection"),
-    ("pw_reset",       "Password reset needed"),
-    ("new_user",       "New user / onboarding setup"),
-    ("data_loss",      "Data loss / corruption concern"),
-]
-
 PRIORITY_CHOICES = [
     (4, "Low — Minor issue, no work stoppage"),
     (3, "Medium — Workaround exists, productivity affected"),
     (2, "High — Work is halted, team affected"),
     (1, "Critical — System down, department or city-wide"),
 ]
+
+# ---------------------------------------------------------------------------
+# 3-LEVEL CASCADE: Category → Sub-Type → Issue Type
+#
+# Structure:
+#   ISSUE_CASCADE[category] = {
+#       "subtypes": [(slug, label), ...],
+#       "issue_types": {
+#           subtype_slug: [(slug, label), ...],
+#       }
+#   }
+#
+# This single source of truth is consumed by:
+#   - forms.py (for model field choices)
+#   - views.py (serialised to JSON for the JS cascade)
+#   - routing.py compute() (issue_type passed in for extra context)
+# ---------------------------------------------------------------------------
+
+ISSUE_CASCADE: dict[str, dict] = {
+
+    "hardware": {
+        "subtypes": [
+            ("no_boot",        "Not turning on / won't boot"),
+            ("slow",           "Slow performance / intermittent"),
+            ("display",        "Display or monitor issue"),
+            ("peripheral",     "Peripheral device not working"),
+            ("complete_outage","Complete hardware failure"),
+        ],
+        "issue_types": {
+            "no_boot": [
+                ("power_no_response", "No power — no lights, no fan, no response"),
+                ("bios_error",        "BIOS or POST error displayed on screen"),
+                ("os_wont_load",      "Reaches login screen but OS won't finish loading"),
+                ("bootloop",          "Device restarts repeatedly / bootloop"),
+            ],
+            "slow": [
+                ("high_cpu",          "Very slow — fan loud, likely high CPU/RAM"),
+                ("low_storage",       "Low disk space warning shown"),
+                ("slow_after_update", "Became slow after a recent update"),
+                ("malware_suspected", "Unusual behavior / possible malware"),
+            ],
+            "display": [
+                ("no_signal",         "Monitor shows 'No Signal' or stays black"),
+                ("flickering",        "Screen flickering or flashing"),
+                ("wrong_resolution",  "Wrong resolution / display stretched or cut off"),
+                ("dead_pixels",       "Dead pixels or visible physical screen damage"),
+            ],
+            "peripheral": [
+                ("printer_offline",   "Printer shows offline or won't print"),
+                ("usb_not_recognized","USB device not recognized"),
+                ("keyboard_mouse",    "Keyboard or mouse unresponsive"),
+                ("external_drive",    "External drive not detected"),
+            ],
+            "complete_outage": [
+                ("total_failure",     "Device completely unresponsive"),
+                ("physical_damage",   "Physical damage observed"),
+                ("powers_off",        "Powers on but immediately shuts off"),
+            ],
+        },
+    },
+
+    "software": {
+        "subtypes": [
+            ("app_crash",  "Application crash or error"),
+            ("slow",       "Application running slowly"),
+            ("no_login",   "Cannot log into application"),
+            ("new_user",   "New install or access needed"),
+            ("data_loss",  "File or data issue"),
+        ],
+        "issue_types": {
+            "app_crash": [
+                ("crash_on_launch",  "Crashes immediately when opening"),
+                ("crash_during_use", "Crashes randomly during normal use"),
+                ("error_code",       "Specific error code displayed"),
+                ("freeze_hang",      "Freezes / becomes completely unresponsive"),
+            ],
+            "slow": [
+                ("app_loading_slow", "Application takes very long to open"),
+                ("browser_slow",     "Browser slow, freezing, or crashing"),
+                ("print_queue_stuck","Print queue stuck or printing very slow"),
+                ("db_query_slow",    "Database or query operations are slow"),
+            ],
+            "no_login": [
+                ("license_expired",  "License expired or shows as invalid"),
+                ("account_locked",   "Account locked inside the application"),
+                ("not_activated",    "Software not activated on this machine"),
+                ("wrong_credentials","Credentials not accepted / access denied"),
+            ],
+            "new_user": [
+                ("install_needed",   "Software needs to be installed"),
+                ("license_needed",   "License key or seat needed"),
+                ("config_needed",    "Software needs configuration for this user"),
+                ("access_needed",    "User needs access/permissions granted"),
+            ],
+            "data_loss": [
+                ("file_missing",     "File or folder missing or accidentally deleted"),
+                ("file_corrupted",   "File opens but data appears corrupted"),
+                ("autosave_failed",  "Auto-save or backup did not run"),
+                ("need_rollback",    "Need to restore a previous version of a file"),
+            ],
+        },
+    },
+
+    "network": {
+        "subtypes": [
+            ("no_internet",    "No internet or network access"),
+            ("slow_conn",      "Slow or unstable connection"),
+            ("complete_outage","Full network outage — multiple users"),
+        ],
+        "issue_types": {
+            "no_internet": [
+                ("no_connection",    "No network connection at all"),
+                ("limited_conn",     "Limited / intermittent connection"),
+                ("dns_failure",      "Connected but websites / resources won't load"),
+                ("vpn_blocked",      "VPN not connecting or being blocked"),
+            ],
+            "slow_conn": [
+                ("wifi_weak",        "WiFi signal weak in this area"),
+                ("vpn_slow",         "VPN connected but very slow"),
+                ("video_calls_poor", "Video calls or streaming buffering badly"),
+                ("bandwidth_limit",  "Bandwidth seems throttled or limited"),
+            ],
+            "complete_outage": [
+                ("floor_outage",     "Entire floor has no network access"),
+                ("dept_outage",      "Entire department has no network access"),
+                ("switch_down",      "Network switch or router appears to be down"),
+                ("building_outage",  "Building-wide network outage"),
+            ],
+        },
+    },
+
+    "email": {
+        "subtypes": [
+            ("no_login",       "Cannot log into email"),
+            ("slow",           "Email loading slowly or not syncing"),
+            ("complete_outage","Cannot send or receive email"),
+            ("new_user",       "New mailbox or access needed"),
+        ],
+        "issue_types": {
+            "no_login": [
+                ("password_issue",  "Cannot log in — password not accepted"),
+                ("mfa_problem",     "Multi-factor authentication not working"),
+                ("account_locked",  "Email account has been locked"),
+                ("profile_missing", "Outlook profile missing or corrupted"),
+            ],
+            "slow": [
+                ("inbox_loading",   "Inbox taking a long time to load"),
+                ("attachments_slow","Attachments not loading or downloading"),
+                ("sync_issue",      "Email not syncing across devices"),
+                ("search_broken",   "Email search not returning results"),
+            ],
+            "complete_outage": [
+                ("cannot_send",     "Can receive email but cannot send"),
+                ("cannot_receive",  "Cannot receive any new emails"),
+                ("outlook_crash",   "Outlook crashes on launch"),
+                ("server_conn",     "Cannot connect to mail server at all"),
+            ],
+            "new_user": [
+                ("new_mailbox",     "New email account / mailbox needed"),
+                ("shared_mailbox",  "Access to a shared mailbox needed"),
+                ("distro_list",     "Add user to a distribution list"),
+                ("signature_setup", "Email signature setup or update needed"),
+            ],
+        },
+    },
+
+    "security": {
+        "subtypes": [
+            ("no_login", "Locked out of account or system"),
+            ("pw_reset", "Password reset needed"),
+            ("data_loss","Suspected security incident"),
+            ("new_user", "New account or permissions needed"),
+        ],
+        "issue_types": {
+            "no_login": [
+                ("account_locked",   "Account locked after failed login attempts"),
+                ("mfa_lost",         "Lost MFA device or authenticator app"),
+                ("ad_account",       "Active Directory account issue"),
+                ("vpn_credentials",  "VPN credentials not working"),
+            ],
+            "pw_reset": [
+                ("forgot_password",  "Forgot password — need reset link"),
+                ("expired_password", "Password expired and cannot be changed"),
+                ("forced_reset_fail","Forced to reset but the reset page fails"),
+                ("complexity_issue", "Password complexity requirements unclear"),
+            ],
+            "data_loss": [
+                ("phishing_email",       "Received a suspicious or phishing email"),
+                ("unauthorized_access",  "Possible unauthorized access to account"),
+                ("malware_ransomware",   "Malware or ransomware detected/suspected"),
+                ("potential_breach",     "Potential data breach or leak"),
+            ],
+            "new_user": [
+                ("new_employee_account", "New employee account creation needed"),
+                ("additional_perms",     "Additional permissions or roles needed"),
+                ("vpn_setup",            "VPN access setup for new user"),
+                ("system_access",        "Access to a specific system or application"),
+            ],
+        },
+    },
+
+    "phone": {
+        "subtypes": [
+            ("complete_outage","Phone completely not working"),
+            ("slow",           "Call quality issues"),
+            ("peripheral",     "Headset or phone hardware issue"),
+        ],
+        "issue_types": {
+            "complete_outage": [
+                ("no_dial_tone",    "No dial tone on desk phone"),
+                ("phone_dead",      "Phone not powering on"),
+                ("calls_not_routing","Calls not routing / going to wrong extension"),
+                ("voicemail_issue", "Voicemail system not working"),
+            ],
+            "slow": [
+                ("poor_call_quality","Call quality poor or distorted"),
+                ("calls_dropping",  "Calls dropping frequently"),
+                ("echo_feedback",   "Echo or feedback heard during calls"),
+                ("call_delay",      "Noticeable delay / latency during calls"),
+            ],
+            "peripheral": [
+                ("headset_not_working","Headset not working or not recognized"),
+                ("conference_phone",  "Conference room phone issue"),
+                ("handset_static",    "Handset producing static or crackling"),
+                ("speakerphone",      "Speakerphone not functioning"),
+            ],
+        },
+    },
+
+    "server": {
+        "subtypes": [
+            ("complete_outage","Server or service is down"),
+            ("slow",           "Server performance degraded"),
+            ("data_loss",      "Data or storage concern"),
+        ],
+        "issue_types": {
+            "complete_outage": [
+                ("server_unreachable", "Server completely down / unreachable"),
+                ("service_down",       "Specific service or application unreachable"),
+                ("unplanned_downtime", "Unexpected downtime — not scheduled"),
+                ("vm_not_starting",    "Virtual machine not starting"),
+            ],
+            "slow": [
+                ("high_load",        "Server showing high CPU or memory load"),
+                ("db_slow",          "Database queries running very slowly"),
+                ("storage_nearly_full","Server storage nearly full"),
+                ("network_latency",  "High network latency to this server"),
+            ],
+            "data_loss": [
+                ("data_corrupted",   "Data on server appears corrupted"),
+                ("backup_failed",    "Backup job failed or did not run"),
+                ("accidental_delete","Files accidentally deleted from server"),
+                ("raid_disk_alert",  "RAID array or disk health alert"),
+            ],
+        },
+    },
+
+    "data": {
+        "subtypes": [
+            ("data_loss","Report data is incorrect or missing"),
+            ("slow",     "Reports or dashboards loading slowly"),
+            ("app_crash","Reporting tool crashing or not working"),
+        ],
+        "issue_types": {
+            "data_loss": [
+                ("report_wrong",     "Report showing incorrect or unexpected data"),
+                ("data_missing",     "Records or entire dataset is missing"),
+                ("export_failed",    "Data export or download failing"),
+                ("import_failed",    "Data import or upload failing"),
+            ],
+            "slow": [
+                ("report_slow",      "Reports taking too long to generate"),
+                ("dashboard_slow",   "Dashboard not loading or very slow"),
+                ("query_timeout",    "Query timing out before completing"),
+                ("export_slow",      "Data export taking excessively long"),
+            ],
+            "app_crash": [
+                ("report_tool_crash","Reporting tool crashing"),
+                ("bi_tool_issue",    "BI or analytics tool not opening/working"),
+                ("connection_lost",  "Lost connection to data source"),
+                ("scheduled_failed", "Scheduled report not running automatically"),
+            ],
+        },
+    },
+}
+
+
+# ---------------------------------------------------------------------------
+# FLAT CHOICES LISTS — derived from ISSUE_CASCADE for model/form field validation
+# ---------------------------------------------------------------------------
+
+def _all_subtypes() -> list[tuple[str, str]]:
+    """Flat list of every (slug, label) sub-type across all categories."""
+    seen: dict[str, str] = {}
+    for cat_data in ISSUE_CASCADE.values():
+        for slug, label in cat_data["subtypes"]:
+            seen[slug] = label
+    return [("", "— Select sub-type —")] + list(seen.items())
+
+
+def _all_issue_types() -> list[tuple[str, str]]:
+    """Flat list of every (slug, label) issue type across all categories/subtypes."""
+    seen: dict[str, str] = {}
+    for cat_data in ISSUE_CASCADE.values():
+        for issues in cat_data["issue_types"].values():
+            for slug, label in issues:
+                seen[slug] = label
+    return [("", "— Select issue type —")] + list(seen.items())
+
+
+SUBTYPE_CHOICES   = _all_subtypes()
+ISSUE_TYPE_CHOICES = _all_issue_types()
+
+
+# Convenience: category → valid subtype slugs (for JS cascade)
+CATEGORY_SUBTYPES: dict[str, list[tuple[str, str]]] = {
+    cat: data["subtypes"] for cat, data in ISSUE_CASCADE.items()
+}
+
+# Convenience: (category, subtype) → valid issue type slugs (for JS cascade)
+SUBTYPE_ISSUE_TYPES: dict[str, dict[str, list[tuple[str, str]]]] = {
+    cat: data["issue_types"] for cat, data in ISSUE_CASCADE.items()
+}

@@ -29,7 +29,9 @@
 
       <div class="sec">
         <div class="sec-title">Issue</div>
-        <div class="mrow"><span class="mk">Category</span><span class="mv" style="text-transform:capitalize">{{ ticket.category }}{% if ticket.subtype %} &middot; {{ ticket.subtype }}{% endif %}</span></div>
+        <div class="mrow"><span class="mk">Category</span><span class="mv" style="text-transform:capitalize">{{ ticket.category }}</span></div>
+        {% if ticket.subtype %}<div class="mrow"><span class="mk">Sub-Type</span><span class="mv">{{ ticket.subtype }}</span></div>{% endif %}
+        {% if ticket.issue_type %}<div class="mrow"><span class="mk">Issue Type</span><span class="mv">{{ ticket.issue_type }}</span></div>{% endif %}
         {% if ticket.asset_tag %}<div class="mrow"><span class="mk">Asset Tag</span><span class="mv">{{ ticket.asset_tag }}</span></div>{% endif %}
         {% if ticket.description %}
         <div style="margin-top:10px">

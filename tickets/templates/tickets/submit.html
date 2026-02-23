@@ -5,7 +5,7 @@
 {% block content %}
 <div class="ph">
   <h1>IT Support Request</h1>
-  <p>Submit a work order. The 4-tier routing engine auto-assigns your ticket based on department, category, sub-type, and keyword detection.</p>
+  <p>Submit a work order. Select a category to narrow sub-type options, then refine further with the issue type. The routing engine assigns your ticket automatically.</p>
 </div>
 
 {% if messages %}
@@ -47,23 +47,71 @@
       </div>
     </div>
 
-    <!-- TIER 2–4: Issue Details -->
+    <!-- TIER 2-4: Issue Details with cascade dropdowns -->
     <div class="sec">
       <div class="sec-title">
-        Issue Details
-        <span class="tier-tag">Tier 2 &mdash; Category &amp; Team</span>
+        Issue Classification
+        <span class="tier-tag">Tier 2 &mdash; Category / Team &nbsp;&bull;&nbsp; Tier 3 &mdash; Sub-Type / Issue</span>
       </div>
-      <div class="row">
+
+      <!-- Step 1: Category -->
+      <div class="row row1" style="margin-bottom:6px">
         <div class="fld">
-          <label for="id_category">Category <span class="req">*</span></label>
+          <label for="id_category">
+            Category <span class="req">*</span>
+            <span class="cascade-step">Step 1 of 3</span>
+          </label>
           {{ form.category }}
         </div>
+      </div>
+
+      <!-- Step 2: Sub-type (filtered by category) -->
+      <div class="cascade-arrow" id="arrow1">&#8595;</div>
+      <div class="row row1" style="margin-bottom:6px">
         <div class="fld">
-          <label for="id_subtype">Sub-Type <span class="tier-tag" style="margin-left:4px">Tier 3 &mdash; Modifier</span></label>
-          {{ form.subtype }}
+          <label for="id_subtype">
+            Sub-Type
+            <span class="cascade-step" id="subHint">Select a category first</span>
+          </label>
+          <select id="f_sub" name="subtype" onchange="onSubtypeChange()" disabled>
+            <option value="">— Select a category first —</option>
+          </select>
         </div>
       </div>
+
+      <!-- Step 3: Issue type (filtered by sub-type) -->
+      <div class="cascade-arrow" id="arrow2">&#8595;</div>
       <div class="row row1">
+        <div class="fld">
+          <label for="id_issue">
+            Specific Issue
+            <span class="cascade-step" id="issueHint">Select a sub-type first</span>
+          </label>
+          <select id="f_issue" name="issue_type" onchange="liveRoute()" disabled>
+            <option value="">— Select a sub-type first —</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Progress indicator -->
+      <div class="cascade-progress" id="cascadeProgress">
+        <div class="cp-step" id="cp1">
+          <div class="cp-dot"></div>
+          <span>Category</span>
+        </div>
+        <div class="cp-line"></div>
+        <div class="cp-step" id="cp2">
+          <div class="cp-dot"></div>
+          <span>Sub-Type</span>
+        </div>
+        <div class="cp-line"></div>
+        <div class="cp-step" id="cp3">
+          <div class="cp-dot"></div>
+          <span>Issue Type</span>
+        </div>
+      </div>
+
+      <div class="row row1" style="margin-top:16px">
         <div class="fld">
           <label for="id_title">Brief Summary <span class="req">*</span></label>
           {{ form.title }}
@@ -121,10 +169,10 @@
       </div>
     </div>
 
-  </form><!-- end form (actions are outside so the routing panel can sit between) -->
+  </form>
 </div>
 
-<!-- LIVE ROUTING PANEL (populated by JS via /api/route/) -->
+<!-- LIVE ROUTING PANEL -->
 <div class="rp" id="routingPanel">
   <div class="rp-head">&#9889; Live Routing Decision</div>
   <div class="rp-body">
@@ -140,8 +188,61 @@
 </div>
 {% endblock %}
 
+{% block extra_head %}
+<style>
+/* CASCADE STYLES */
+.cascade-step {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--steel); margin-left: 8px; font-style: normal;
+}
+.cascade-arrow {
+  text-align: center; color: var(--gold); font-size: 18px;
+  margin: 4px 0; opacity: .4; transition: opacity .2s;
+}
+.cascade-arrow.active { opacity: 1; }
+
+/* Progress tracker */
+.cascade-progress {
+  display: flex; align-items: center; gap: 0;
+  margin: 16px 0 4px; padding: 12px 16px;
+  background: rgba(8,17,31,.5); border-radius: var(--r);
+  border: 1px solid var(--border);
+}
+.cp-step { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 0 0 auto; }
+.cp-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: rgba(109,138,170,.2); border: 1.5px solid rgba(109,138,170,.3);
+  transition: all .25s;
+}
+.cp-step span { font-family: 'IBM Plex Mono',monospace; font-size: 9px; text-transform: uppercase; letter-spacing: .1em; color: var(--steel); }
+.cp-line { flex: 1; height: 1px; background: rgba(109,138,170,.2); margin: 0 8px; margin-bottom: 14px; transition: background .25s; }
+
+/* Active steps */
+.cp-step.done .cp-dot  { background: var(--green); border-color: var(--green-2); box-shadow: 0 0 6px rgba(62,207,142,.3); }
+.cp-step.done span     { color: var(--green-2); }
+.cp-step.active .cp-dot { background: var(--gold); border-color: var(--gold-2); box-shadow: 0 0 8px rgba(201,168,76,.3); }
+.cp-step.active span   { color: var(--gold-2); }
+.cp-line.done { background: var(--green); }
+
+/* Disabled select styling */
+select:disabled {
+  opacity: .45; cursor: not-allowed;
+  border-color: rgba(109,138,170,.15) !important;
+}
+select.cascade-ready {
+  border-color: rgba(201,168,76,.4) !important;
+  box-shadow: 0 0 0 2px rgba(201,168,76,.08);
+}
+select.cascade-done { border-color: rgba(62,207,142,.3) !important; }
+</style>
+{% endblock %}
+
 {% block extra_js %}
 <script>
+// ── CASCADE DATA from routing.py (injected by Django view) ─────────────────
+const CASCADE = {{ cascade_json|safe }};
+
 const ROUTE_URL = "{% url 'live_route' %}";
 const TIER_META = {
   CRITICAL_INFRA: {label:"Critical Infrastructure", icon:"🔴", cls:"dtb-CRITICAL_INFRA"},
@@ -149,36 +250,175 @@ const TIER_META = {
   PUBLIC_SAFETY:  {label:"Public Safety Support",   icon:"🟣", cls:"dtb-PUBLIC_SAFETY"},
   STANDARD:       {label:"Standard",                icon:"⚪", cls:"dtb-STANDARD"},
 };
+const DEPT_TIERS = {
+  "Police Department":"CRITICAL_INFRA","Fire Department":"CRITICAL_INFRA","Utilities":"CRITICAL_INFRA",
+  "City Manager's Office":"EXECUTIVE","Health Department":"PUBLIC_SAFETY"
+};
 const PL = {1:"Critical",2:"High",3:"Medium",4:"Low"};
 const PB = {1:"bp1",2:"bp2",3:"bp3",4:"bp4"};
 
 let _debounce = null;
 
-function liveRoute() {
-  clearTimeout(_debounce);
-  _debounce = setTimeout(_fetchRoute, 280);
+// ── STEP 1: Category changes → repopulate Sub-Type ─────────────────────────
+function onCategoryChange() {
+  const cat = document.getElementById("f_cat").value;
+  const subSel   = document.getElementById("f_sub");
+  const issueSel = document.getElementById("f_issue");
+
+  // Reset downstream dropdowns
+  _resetSelect(subSel,   "— Select sub-type —",   true);
+  _resetSelect(issueSel, "— Select a sub-type first —", true);
+
+  updateProgress(cat ? 1 : 0);
+
+  if (!cat || !CASCADE[cat]) {
+    document.getElementById("subHint").textContent = "Select a category first";
+    document.getElementById("issueHint").textContent = "Select a sub-type first";
+    document.getElementById("arrow1").classList.remove("active");
+    document.getElementById("arrow2").classList.remove("active");
+    subSel.disabled = true;
+    issueSel.disabled = true;
+    document.getElementById("routingPanel").classList.remove("show");
+    return;
+  }
+
+  // Populate sub-type options for this category
+  const subtypes = CASCADE[cat].subtypes;
+  subSel.innerHTML = '<option value="">— Select sub-type —</option>';
+  subtypes.forEach(([slug, label]) => {
+    const opt = document.createElement("option");
+    opt.value = slug; opt.textContent = label;
+    subSel.appendChild(opt);
+  });
+  subSel.disabled = false;
+  subSel.className = "cascade-ready";
+
+  document.getElementById("subHint").textContent = subtypes.length + " options available";
+  document.getElementById("arrow1").classList.add("active");
+  document.getElementById("arrow2").classList.remove("active");
+
+  // Update dept badge & trigger route
+  _updateDeptBadge();
+  liveRoute();
 }
 
-function _fetchRoute() {
-  const dept  = document.getElementById("f_dept")?.value || "";
-  const cat   = document.getElementById("f_cat")?.value  || "";
-  const sub   = document.getElementById("f_sub")?.value  || "";
-  const pri   = document.querySelector('input[name="user_priority"]:checked')?.value || "4";
-  const title = document.getElementById("f_title")?.value || "";
-  const desc  = document.getElementById("f_desc")?.value  || "";
+// ── STEP 2: Sub-type changes → repopulate Issue Type ──────────────────────
+function onSubtypeChange() {
+  const cat      = document.getElementById("f_cat").value;
+  const sub      = document.getElementById("f_sub").value;
+  const subSel   = document.getElementById("f_sub");
+  const issueSel = document.getElementById("f_issue");
 
-  // Update dept tier badge locally (no fetch needed)
+  _resetSelect(issueSel, "— Select issue type —", true);
+
+  if (!sub) {
+    issueSel.disabled = true;
+    issueSel.className = "";
+    document.getElementById("issueHint").textContent = "Select a sub-type first";
+    document.getElementById("arrow2").classList.remove("active");
+    updateProgress(1);
+    liveRoute();
+    return;
+  }
+
+  // Mark sub as done
+  subSel.className = "cascade-done";
+  updateProgress(2);
+
+  const issueTypes = CASCADE[cat]?.issue_types?.[sub];
+  if (!issueTypes || issueTypes.length === 0) {
+    issueSel.disabled = true;
+    document.getElementById("issueHint").textContent = "No further narrowing available";
+    document.getElementById("arrow2").classList.remove("active");
+    liveRoute();
+    return;
+  }
+
+  // Populate issue types
+  issueSel.innerHTML = '<option value="">— Select issue type —</option>';
+  issueTypes.forEach(([slug, label]) => {
+    const opt = document.createElement("option");
+    opt.value = slug; opt.textContent = label;
+    issueSel.appendChild(opt);
+  });
+  issueSel.disabled = false;
+  issueSel.className = "cascade-ready";
+
+  document.getElementById("issueHint").textContent = issueTypes.length + " options available";
+  document.getElementById("arrow2").classList.add("active");
+  liveRoute();
+}
+
+// ── PROGRESS INDICATOR ─────────────────────────────────────────────────────
+function updateProgress(step) {
+  // step: 0=nothing, 1=cat done, 2=sub done, 3=issue done
+  const steps = [
+    document.getElementById("cp1"),
+    document.getElementById("cp2"),
+    document.getElementById("cp3"),
+  ];
+  const lines = document.querySelectorAll(".cp-line");
+
+  steps.forEach((el, i) => {
+    el.classList.remove("active", "done");
+    if (i < step) el.classList.add("done");
+    else if (i === step) el.classList.add("active");
+  });
+  lines.forEach((el, i) => {
+    el.classList.toggle("done", i < step);
+  });
+
+  // Mark issue select as done when selected
+  if (step >= 3) {
+    document.getElementById("f_issue").className = "cascade-done";
+  }
+}
+
+// ── UTILITY ────────────────────────────────────────────────────────────────
+function _resetSelect(sel, placeholder, disable) {
+  sel.innerHTML = `<option value="">${placeholder}</option>`;
+  sel.className = "";
+  if (disable) sel.disabled = true;
+}
+
+function _updateDeptBadge() {
+  const dept  = document.getElementById("f_dept")?.value || "";
   const badge = document.getElementById("deptBadge");
-  if (dept && TIER_META[_tierOf(dept)]) {
-    const m = TIER_META[_tierOf(dept)];
+  const tier  = DEPT_TIERS[dept] || (dept ? "STANDARD" : "");
+  if (tier && TIER_META[tier]) {
+    const m = TIER_META[tier];
     badge.className = "dtb show " + m.cls;
     badge.innerHTML = "<strong>" + m.icon + " " + m.label + "</strong>";
   } else {
     badge.className = "dtb";
   }
+}
 
-  if (!dept || !cat) { document.getElementById("routingPanel").classList.remove("show"); return; }
+// ── LIVE ROUTING FETCH ─────────────────────────────────────────────────────
+function liveRoute() {
+  _updateDeptBadge();
+  clearTimeout(_debounce);
+  _debounce = setTimeout(_fetchRoute, 280);
 
+  // Update progress if issue type was just selected
+  const issueSel = document.getElementById("f_issue");
+  if (issueSel && !issueSel.disabled && issueSel.value) {
+    updateProgress(3);
+  }
+}
+
+function _fetchRoute() {
+  const dept  = document.getElementById("f_dept")?.value   || "";
+  const cat   = document.getElementById("f_cat")?.value    || "";
+  const sub   = document.getElementById("f_sub")?.value    || "";
+  const pri   = document.querySelector('input[name="user_priority"]:checked')?.value || "4";
+  const title = document.getElementById("f_title")?.value  || "";
+  const desc  = document.getElementById("f_desc")?.value   || "";
+
+  if (!dept || !cat) {
+    document.getElementById("routingPanel").classList.remove("show");
+    return;
+  }
   const params = new URLSearchParams({dept, category:cat, subtype:sub, priority:pri, text:title+" "+desc});
   fetch(ROUTE_URL + "?" + params)
     .then(r => r.json())
@@ -189,13 +429,6 @@ function _fetchRoute() {
     });
 }
 
-// Simple dept→tier lookup (mirrors routing.py DEPARTMENT_TIERS)
-const DEPT_TIERS = {
-  "Police Department":"CRITICAL_INFRA","Fire Department":"CRITICAL_INFRA","Utilities":"CRITICAL_INFRA",
-  "City Manager's Office":"EXECUTIVE","Health Department":"PUBLIC_SAFETY"
-};
-function _tierOf(dept){ return DEPT_TIERS[dept] || "STANDARD"; }
-
 function _suggestPriority(s) {
   for (let i=1;i<=4;i++) {
     const lbl = document.querySelector('label[for="pr'+i+'"]');
@@ -205,18 +438,17 @@ function _suggestPriority(s) {
 
 function _renderPanel(d) {
   document.getElementById("routingPanel").classList.add("show");
-  // Escalation chain
   document.getElementById("rpChain").innerHTML = d.escalation_path.map((s,i) =>
     (i>0?'<span class="rp-arr">&rarr;</span>':'')+
-    '<span class="rp-step'+(i===0?' act':'')+(i===d.escalation_path.length-1&&d.effective_priority<=2?' esc':'')+'">'+s+'</span>'
+    '<span class="rp-step'+(i===0?' act':'')+
+    (i===d.escalation_path.length-1&&d.effective_priority<=2?' esc':'')+'">'
+    +s+'</span>'
   ).join('');
-  // Meta
   document.getElementById("rpMeta").innerHTML =
     '<div class="kv"><span>Team</span><strong>'+d.team+'</strong></div>' +
-    '<div class="kv"><span>Eff. Priority</span><strong><span class="badge '+PB[d.effective_priority]+'">'+d.priority_label+'</span>'+(d.was_modified?' <span style="font-size:10px;color:var(--amber-2)">(auto-adjusted)</span>':'')+' </strong></div>' +
+    '<div class="kv"><span>Eff. Priority</span><strong><span class="badge '+PB[d.effective_priority]+'">'+d.priority_label+'</span>'+(d.was_modified?' <span style="font-size:10px;color:var(--amber-2)">(auto-adjusted)</span>':'')+'</strong></div>' +
     '<div class="kv"><span>SLA Target</span><strong>'+d.sla+'</strong></div>' +
     '<div class="kv"><span>Dept Tier</span><strong style="color:var(--steel-2)">'+d.tier_icon+' '+d.tier_label+'</strong></div>';
-  // Reasons
   document.getElementById("rpReasons").innerHTML = d.reasons.map(r=>'&bull; '+r).join('<br>');
 }
 </script>

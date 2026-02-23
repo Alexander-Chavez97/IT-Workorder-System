@@ -91,11 +91,11 @@ laredo_ist/
 
 This project follows a strict **Model–View–Controller** pattern, with clear boundaries between each layer.
 
-| Layer          | Files                      | Responsibility                                                                               |
-| -------------- | -------------------------- | -------------------------------------------------------------------------------------------- |
-| **Model**      | `routing.py`, `models.py`  | All business logic, routing decisions, and database schema. Zero UI code.                    |
-| **View**       | `templates/tickets/*.html` | Rendering only. Templates receive a context dictionary and display it — no logic lives here. |
-| **Controller** | `views.py`, `urls.py`      | Receives HTTP requests, calls the Model, passes results to the correct View.                 |
+| Layer | Files | Responsibility |
+|-------|-------|----------------|
+| **Model** | `routing.py`, `models.py` | All business logic, routing decisions, and database schema. Zero UI code. |
+| **View** | `templates/tickets/*.html` | Rendering only. Templates receive a context dictionary and display it — no logic lives here. |
+| **Controller** | `views.py`, `urls.py` | Receives HTTP requests, calls the Model, passes results to the correct View. |
 
 ### Why `routing.py` is kept separate
 
@@ -118,12 +118,12 @@ Tickets pass through **four sequential tiers**. Each tier can only raise the eff
 
 Every department is pre-classified into one of four tiers before any other factor is considered. This is the most impactful modifier.
 
-| Tier                           | Departments                                        | Priority Floor      | SLA Factor                    |
-| ------------------------------ | -------------------------------------------------- | ------------------- | ----------------------------- |
-| 🔴 **Critical Infrastructure** | Police, Fire, Utilities                            | P2 (High) minimum   | ×0.5 — half the baseline time |
-| 🟡 **Executive**               | City Manager's Office                              | P2 (High) minimum   | ×0.5                          |
-| 🟣 **Public Safety Support**   | Health Department                                  | P3 (Medium) minimum | ×0.75                         |
-| ⚪ **Standard**                | Finance, Public Works, Parks, City Clerk, Planning | No floor            | ×1.0 baseline                 |
+| Tier | Departments | Priority Floor | SLA Factor |
+|------|-------------|---------------|------------|
+| 🔴 **Critical Infrastructure** | Police, Fire, Utilities | P2 (High) minimum | ×0.5 — half the baseline time |
+| 🟡 **Executive** | City Manager's Office | P2 (High) minimum | ×0.5 |
+| 🟣 **Public Safety Support** | Health Department | P3 (Medium) minimum | ×0.75 |
+| ⚪ **Standard** | Finance, Public Works, Parks, City Clerk, Planning | No floor | ×1.0 baseline |
 
 > **Example:** A Finance employee submitting a Medium ticket stays at Medium. A Police officer submitting the exact same ticket is automatically elevated to High.
 
@@ -133,16 +133,16 @@ Every department is pre-classified into one of four tiers before any other facto
 
 The ticket category determines which team handles it. Three categories auto-escalate to **Critical (P1)** when coming from a Critical Infrastructure department.
 
-| Category   | Standard Team                  | Critical Infra Team            | Auto-P1 for CI? |
-| ---------- | ------------------------------ | ------------------------------ | :-------------: |
-| `hardware` | Desktop Support Team           | Field Tech Unit                |        —        |
-| `software` | Application Support Team       | Application Support Team       |        —        |
-| `network`  | Network Operations Team        | NOC On-Call                    |       ✅        |
-| `email`    | Messaging & Collaboration Team | Messaging & Collaboration Team |        —        |
-| `security` | Security & Identity Team       | Security & Identity Team       |       ✅        |
-| `phone`    | Telecom & VOIP Team            | Telecom & VOIP Team            |        —        |
-| `server`   | Infrastructure & DBA Team      | Infrastructure & DBA Team      |       ✅        |
-| `data`     | Infrastructure & DBA Team      | Infrastructure & DBA Team      |        —        |
+| Category | Standard Team | Critical Infra Team | Auto-P1 for CI? |
+|----------|--------------|---------------------|:-----------:|
+| `hardware` | Desktop Support Team | Field Tech Unit | — |
+| `software` | Application Support Team | Application Support Team | — |
+| `network` | Network Operations Team | NOC On-Call | ✅ |
+| `email` | Messaging & Collaboration Team | Messaging & Collaboration Team | — |
+| `security` | Security & Identity Team | Security & Identity Team | ✅ |
+| `phone` | Telecom & VOIP Team | Telecom & VOIP Team | — |
+| `server` | Infrastructure & DBA Team | Infrastructure & DBA Team | ✅ |
+| `data` | Infrastructure & DBA Team | Infrastructure & DBA Team | — |
 
 ---
 
@@ -150,12 +150,12 @@ The ticket category determines which team handles it. Three categories auto-esca
 
 The selected sub-type applies additional rules on top of the Tier 1 and 2 results.
 
-| Sub-Type                  | Effect                                                                         |
-| ------------------------- | ------------------------------------------------------------------------------ |
-| `complete_outage`         | Force P1 on Critical Infra depts; +1 bump for all others                       |
-| `no_internet`, `no_login` | Force P1 on Critical Infra; +1 bump for others                                 |
-| `data_loss`               | +1 priority bump for all departments                                           |
-| `pw_reset`, `new_user`    | **Capped at P3 (Medium)** for non-Infra depts — these are non-urgent workflows |
+| Sub-Type | Effect |
+|----------|--------|
+| `complete_outage` | Force P1 on Critical Infra depts; +1 bump for all others |
+| `no_internet`, `no_login` | Force P1 on Critical Infra; +1 bump for others |
+| `data_loss` | +1 priority bump for all departments |
+| `pw_reset`, `new_user` | **Capped at P3 (Medium)** for non-Infra depts — these are non-urgent workflows |
 
 ---
 
@@ -163,23 +163,23 @@ The selected sub-type applies additional rules on top of the Tier 1 and 2 result
 
 The ticket summary and description fields are scanned for keywords. This tier can override all previous tiers.
 
-| Keywords                                        | Effect                                      |
-| ----------------------------------------------- | ------------------------------------------- |
-| `scada`, `dispatch`, `911`, `cad`               | **Force P1** — mission-critical city system |
-| `everyone`, `entire dept`, `city-wide`          | **Force P1** — widespread impact detected   |
-| `outage`, `offline`, `not working`, `no access` | +1 priority bump                            |
-| `urgent`, `asap`, `emergency`                   | +1 priority bump                            |
+| Keywords | Effect |
+|----------|--------|
+| `scada`, `dispatch`, `911`, `cad` | **Force P1** — mission-critical city system |
+| `everyone`, `entire dept`, `city-wide` | **Force P1** — widespread impact detected |
+| `outage`, `offline`, `not working`, `no access` | +1 priority bump |
+| `urgent`, `asap`, `emergency` | +1 priority bump |
 
 ---
 
 ### SLA Response Time Matrix
 
-| Dept Tier                  | P1 Critical | P2 High | P3 Medium | P4 Low |
-| -------------------------- | :---------: | :-----: | :-------: | :----: |
-| 🔴 Critical Infrastructure |    1 hr     |  2 hrs  |   4 hrs   | 1 day  |
-| 🟡 Executive               |    1 hr     |  2 hrs  |   4 hrs   | 1 day  |
-| 🟣 Public Safety Support   |    2 hrs    |  4 hrs  |   8 hrs   | 2 days |
-| ⚪ Standard                |    4 hrs    |  8 hrs  |   1 day   | 3 days |
+| Dept Tier | P1 Critical | P2 High | P3 Medium | P4 Low |
+|-----------|:-----------:|:-------:|:---------:|:------:|
+| 🔴 Critical Infrastructure | 1 hr | 2 hrs | 4 hrs | 1 day |
+| 🟡 Executive | 1 hr | 2 hrs | 4 hrs | 1 day |
+| 🟣 Public Safety Support | 2 hrs | 4 hrs | 8 hrs | 2 days |
+| ⚪ Standard | 4 hrs | 8 hrs | 1 day | 3 days |
 
 ---
 
@@ -198,7 +198,7 @@ The ticket summary and description fields are scanned for keywords. This tier ca
 cd laredo_ist
 ```
 
-**2. Create and activate a virtual environment** _(recommended):_
+**2. Create and activate a virtual environment** *(recommended):*
 
 ```bash
 python -m venv venv
@@ -242,14 +242,14 @@ The app is now running at **http://127.0.0.1:8000/**
 
 ## 🌐 Available Pages
 
-| URL                                        | Description                                                   |
-| ------------------------------------------ | ------------------------------------------------------------- |
-| `http://127.0.0.1:8000/`                   | Employee ticket submission form                               |
-| `http://127.0.0.1:8000/admin-queue/`       | Admin dashboard — view, filter, and manage all tickets        |
-| `http://127.0.0.1:8000/ticket/<ID>/`       | Individual ticket detail with escalate and resolve actions    |
+| URL | Description |
+|-----|-------------|
+| `http://127.0.0.1:8000/` | Employee ticket submission form |
+| `http://127.0.0.1:8000/admin-queue/` | Admin dashboard — view, filter, and manage all tickets |
+| `http://127.0.0.1:8000/ticket/<ID>/` | Individual ticket detail with escalate and resolve actions |
 | `http://127.0.0.1:8000/routing-reference/` | Live routing logic documentation (rendered from `routing.py`) |
-| `http://127.0.0.1:8000/admin/`             | Django built-in admin panel                                   |
-| `http://127.0.0.1:8000/api/route/`         | AJAX routing endpoint used by the submission form             |
+| `http://127.0.0.1:8000/admin/` | Django built-in admin panel |
+| `http://127.0.0.1:8000/api/route/` | AJAX routing endpoint used by the submission form |
 
 ---
 
@@ -258,7 +258,6 @@ The app is now running at **http://127.0.0.1:8000/**
 SQLite is used by default and requires zero configuration. To switch to a production-grade database, update the `DATABASES` setting in `laredo_ist/settings.py`:
 
 **PostgreSQL:**
-
 ```python
 DATABASES = {
     'default': {
@@ -271,13 +270,11 @@ DATABASES = {
     }
 }
 ```
-
 ```bash
 pip install psycopg2-binary
 ```
 
-**MySQL / MariaDB** _(common in existing city infrastructure):_
-
+**MySQL / MariaDB** *(common in existing city infrastructure):*
 ```python
 DATABASES = {
     'default': {
@@ -290,7 +287,6 @@ DATABASES = {
     }
 }
 ```
-
 ```bash
 pip install mysqlclient
 ```
@@ -334,15 +330,15 @@ for reason in result.reasons:
 
 Since the City of Laredo runs other systems in PHP, this architecture is designed to map directly if a rewrite is ever required:
 
-| Django Component | PHP / Laravel Equivalent                                                      |
-| ---------------- | ----------------------------------------------------------------------------- |
-| `routing.py`     | `app/Services/RoutingEngine.php` — plain service class, no framework coupling |
-| `models.py`      | Eloquent model `app/Models/Ticket.php`                                        |
-| `views.py`       | Controllers in `app/Http/Controllers/`                                        |
-| Django templates | Blade templates in `resources/views/`                                         |
-| `migrations/`    | Laravel migrations in `database/migrations/`                                  |
-| `urls.py`        | Route definitions in `routes/web.php`                                         |
-| AJAX endpoint    | Laravel API route returning JSON                                              |
+| Django Component | PHP / Laravel Equivalent |
+|-----------------|--------------------------|
+| `routing.py` | `app/Services/RoutingEngine.php` — plain service class, no framework coupling |
+| `models.py` | Eloquent model `app/Models/Ticket.php` |
+| `views.py` | Controllers in `app/Http/Controllers/` |
+| Django templates | Blade templates in `resources/views/` |
+| `migrations/` | Laravel migrations in `database/migrations/` |
+| `urls.py` | Route definitions in `routes/web.php` |
+| AJAX endpoint | Laravel API route returning JSON |
 
 The routing engine is entirely self-contained — it is the first and easiest file to port. All four tiers can be reproduced as a single PHP class with no framework dependencies.
 
@@ -350,15 +346,15 @@ The routing engine is entirely self-contained — it is the first and easiest fi
 
 ## 🛠️ Tech Stack
 
-| Component                   | Technology                                     |
-| --------------------------- | ---------------------------------------------- |
-| Backend framework           | Django 4.2                                     |
-| Language                    | Python 3.11+                                   |
-| Database (development)      | SQLite 3                                       |
-| Database (production-ready) | PostgreSQL or MySQL/MariaDB                    |
-| Frontend                    | Django Templates + Vanilla JS                  |
-| Fonts                       | IBM Plex Sans · IBM Plex Mono · IBM Plex Serif |
-| Routing logic               | Custom 4-tier engine (`tickets/routing.py`)    |
+| Component | Technology |
+|-----------|------------|
+| Backend framework | Django 4.2 |
+| Language | Python 3.11+ |
+| Database (development) | SQLite 3 |
+| Database (production-ready) | PostgreSQL or MySQL/MariaDB |
+| Frontend | Django Templates + Vanilla JS |
+| Fonts | IBM Plex Sans · IBM Plex Mono · IBM Plex Serif |
+| Routing logic | Custom 4-tier engine (`tickets/routing.py`) |
 
 ---
 
