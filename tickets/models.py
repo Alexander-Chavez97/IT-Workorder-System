@@ -24,10 +24,21 @@ from .routing import (
 # EMPLOYEE MODEL
 # ---------------------------------------------------------------------------
 
+class EmployeeRole(models.TextChoices):
+    DEPT  = "dept",  "Department Employee"
+    IST   = "ist",   "IST Staff"
+    ADMIN = "admin", "IST Admin"
+
+
 class Employee(models.Model):
     """
     Represents a City of Laredo employee who can authenticate and submit
     work orders.  Passwords are stored as Django-hashed strings (PBKDF2).
+
+    Roles:
+      dept  — regular city department staff; can submit tickets and track them
+      ist   — IST support staff; can also view the admin queue and ticket detail
+      admin — IST administrator; same access as ist plus user management
     """
     employee_id = models.CharField("Employee ID", max_length=30, unique=True)
     first_name  = models.CharField("First Name",  max_length=60)
@@ -35,6 +46,9 @@ class Employee(models.Model):
     email       = models.EmailField("Email",       unique=True)
     department  = models.CharField("Department",   max_length=80,
                                    choices=DEPARTMENT_CHOICES)
+    role        = models.CharField("Role", max_length=10,
+                                   choices=EmployeeRole.choices,
+                                   default=EmployeeRole.DEPT)
     password    = models.CharField("Password Hash", max_length=256)
     is_active   = models.BooleanField("Active", default=True)
     created_at  = models.DateTimeField(auto_now_add=True)
@@ -191,3 +205,57 @@ class Ticket(models.Model):
             return json.loads(self.routing_escalation_path)
         except (ValueError, TypeError):
             return []
+
+
+# ---------------------------------------------------------------------------
+# TICKET HISTORY MODEL
+# ---------------------------------------------------------------------------
+
+class HistoryAction(models.TextChoices):
+    CREATED   = "Created",   "Created"
+    ESCALATED = "Escalated", "Escalated"
+    RESOLVED  = "Resolved",  "Resolved"
+    REOPENED  = "Reopened",  "Reopened"
+    NOTE      = "Note",      "Note Added"
+    ASSIGNED  = "Assigned",  "Reassigned"
+
+
+class TicketHistory(models.Model):
+    """
+    Immutable audit trail for a ticket.
+    One row is appended for every significant event — never edited or deleted.
+    """
+    ticket      = models.ForeignKey(
+        Ticket, on_delete=models.CASCADE, related_name="history"
+    )
+    action      = models.CharField(
+        max_length=20, choices=HistoryAction.choices
+    )
+    note        = models.TextField("Note", blank=True)
+    changed_by  = models.CharField("Changed By", max_length=120, blank=True)
+
+    # Snapshot of priority before/after for escalation events
+    priority_before = models.IntegerField(null=True, blank=True)
+    priority_after  = models.IntegerField(null=True, blank=True)
+
+    # Snapshot of assigned team for reassignment events
+    team_before = models.CharField(max_length=100, blank=True)
+    team_after  = models.CharField(max_length=100, blank=True)
+
+    timestamp   = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["timestamp"]
+        verbose_name = "Ticket History Entry"
+        verbose_name_plural = "Ticket History"
+
+    def __str__(self):
+        return f"{self.ticket.ticket_id} — {self.action} at {self.timestamp:%Y-%m-%d %H:%M}"
+
+    @property
+    def priority_before_label(self):
+        return PRIORITY_LABELS.get(self.priority_before, "") if self.priority_before else ""
+
+    @property
+    def priority_after_label(self):
+        return PRIORITY_LABELS.get(self.priority_after, "") if self.priority_after else ""
