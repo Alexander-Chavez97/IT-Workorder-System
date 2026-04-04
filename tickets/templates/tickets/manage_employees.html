@@ -1,0 +1,56 @@
+{% extends "tickets/base.html" %}
+{% block title %}Manage Employees{% endblock %}
+{% block nav_manage %}active{% endblock %}
+
+{% block content %}
+<div class="ph">
+  <h1>Manage Employees</h1>
+  <p>View all IST Staff and IST Admin employees.</p>
+</div>
+
+<div class="table-card">
+  <div class="ttb">
+    <span class="ttb-title">Employee Queue</span>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Employee ID</th>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Department</th>
+        <th>Role</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for employee in employees %}
+      <tr onclick="window.location='{% url 'employee_detail' employee.id %}'" style="cursor:pointer">        <td><span class="tid">{{ employee.employee_id }}</span></td>
+        <td>{{ employee.full_name }}</td>
+        <td>{{ employee.email }}</td>
+        <td>{{ employee.department }}</td>
+        <td>{{ employee.get_role_display }}</td>
+        <td>
+          {% if employee.is_active %}
+            <span class="badge" style="background:rgba(62,207,142,.15); color:var(--green-2); border:1px solid rgba(62,207,142,.35);">
+              Active
+            </span>
+          {% else %}
+            <span class="badge" style="background:rgba(224,80,80,.15); color:var(--red-2); border:1px solid rgba(224,80,80,.35);">
+              Inactive
+            </span>
+          {% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="6" style="text-align:center;padding:24px;color:var(--steel)">
+          No IST employees found.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

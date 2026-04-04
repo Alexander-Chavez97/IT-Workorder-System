@@ -31,4 +31,8 @@ urlpatterns = [
     path("export/xlsx/",             views.export_xlsx,      name="export_xlsx"),
     path("export/pdf/",              views.export_pdf,       name="export_pdf"),
 
+    path("manage_employees/", views.manage_employees, name="manage_employees"),
+
+    path("manage_employees/<int:employee_id>/", views.employee_detail, name="employee_detail"),
+
 ]

@@ -238,6 +238,8 @@ tbody td{padding:11px 14px;font-size:12px;vertical-align:middle;}
   <div class="nav-links">
     <a class="nav-link {% block nav_submit %}{% endblock %}" href="{% url 'submit_ticket' %}">Submit Ticket</a>
     <a class="nav-link {% block nav_lookup %}{% endblock %}" href="{% url 'ticket_lookup' %}">Track Ticket</a>
+    <a class="nav-link {% block nav_manage %}{% endblock %}" href="{% url 'manage_employees' %}">Manage Employees</a>
+
     {% if request.session.employee_role == "ist" or request.session.employee_role == "admin" %}
     <a class="nav-link {% block nav_admin %}{% endblock %}" href="{% url 'admin_queue' %}">Admin Queue</a>
     {% endif %}

@@ -702,3 +702,20 @@ def export_pdf(request):
     response = HttpResponse(buffer.getvalue(), content_type="application/pdf")
     response["Content-Disposition"] = 'attachment; filename="laredo_ist_tickets.pdf"'
     return response
+
+from django.shortcuts import render
+from .models import Employee, EmployeeRole
+
+def manage_employees(request):
+    employees = Employee.objects.filter(
+        role__in=[EmployeeRole.IST, EmployeeRole.ADMIN]
+    ).order_by("last_name", "first_name")
+
+    context = {
+        "employees": employees,
+    }
+    return render(request, "tickets/manage_employees.html", context)
+
+def employee_detail(request, employee_id):
+    employee = get_object_or_404(Employee, id=employee_id)
+    return render(request, "tickets/employee_detail.html", {"employee": employee})

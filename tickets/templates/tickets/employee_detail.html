@@ -1,0 +1,66 @@
+{% extends "tickets/base.html" %}
+{% block title %}Employee Detail{% endblock %}
+{% block nav_manage %}active{% endblock %}
+
+{% block content %}
+<div class="ph">
+  <h1>Employee Detail</h1>
+  <p>View employee information and account status.</p>
+</div>
+
+<div class="table-card" style="padding:20px">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+    <div>
+      <div style="font-size:22px;font-weight:600;color:var(--text)">{{ employee.full_name }}</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--steel)">
+        Employee ID: {{ employee.employee_id }}
+      </div>
+    </div>
+
+    <div>
+      {% if employee.is_active %}
+        <span class="badge" style="background:rgba(62,207,142,.15); color:var(--green-2); border:1px solid rgba(62,207,142,.35);">
+          Active
+        </span>
+      {% else %}
+        <span class="badge" style="background:rgba(224,80,80,.15); color:var(--red-2); border:1px solid rgba(224,80,80,.35);">
+          Inactive
+        </span>
+      {% endif %}
+    </div>
+  </div>
+
+  <table>
+    <tbody>
+      <tr>
+        <th style="width:220px">First Name</th>
+        <td>{{ employee.first_name }}</td>
+      </tr>
+      <tr>
+        <th>Last Name</th>
+        <td>{{ employee.last_name }}</td>
+      </tr>
+      <tr>
+        <th>Email</th>
+        <td>{{ employee.email }}</td>
+      </tr>
+      <tr>
+        <th>Department</th>
+        <td>{{ employee.department }}</td>
+      </tr>
+      <tr>
+        <th>Role</th>
+        <td>{{ employee.get_role_display }}</td>
+      </tr>
+      <tr>
+        <th>Created At</th>
+        <td>{{ employee.created_at }}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div style="margin-top:18px;display:flex;gap:8px">
+    <a href="{% url 'manage_employees' %}" class="btn btn-ghost">Back to Manage Employees</a>
+  </div>
+</div>
+{% endblock %}
