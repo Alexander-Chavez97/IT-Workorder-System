@@ -19,6 +19,9 @@ urlpatterns = [
     # ── AJAX live routing endpoint
     path("api/route/",               views.live_route,       name="live_route"),
 
+    # ── Ticket lookup (employee read-only)
+    path("track/",                      views.ticket_lookup,    name="ticket_lookup"),
+
     # ── Admin queue & detail
     path("admin-queue/",             views.admin_queue,      name="admin_queue"),
     path("ticket/<str:ticket_id>/",  views.ticket_detail,    name="ticket_detail"),
@@ -28,6 +31,4 @@ urlpatterns = [
     path("export/xlsx/",             views.export_xlsx,      name="export_xlsx"),
     path("export/pdf/",              views.export_pdf,       name="export_pdf"),
 
-    # ── Reference
-    path("routing-reference/",       views.routing_reference, name="routing_reference"),
 ]

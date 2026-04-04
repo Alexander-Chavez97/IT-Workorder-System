@@ -1,11 +1,11 @@
 {% extends "tickets/base.html" %}
-{% block title %}Submit Ticket{% endblock %}
+{% block title %}Submit Work Order{% endblock %}
 {% block nav_submit %}active{% endblock %}
 
 {% block content %}
 <div class="ph">
   <h1>IT Support Request</h1>
-  <p>Submit a work order. Select a category to narrow sub-type options, then refine further with the issue type. The routing engine assigns your ticket automatically.</p>
+  <p>Fill out the form below to submit a work order. Your ticket will be automatically assigned to the appropriate team.</p>
 </div>
 
 {% if messages %}
@@ -18,168 +18,95 @@
   <form method="POST" id="ticketForm">
     {% csrf_token %}
 
-    <!-- TIER 1: Requestor -->
+    <!-- SECTION 1: Requestor Information -->
     <div class="sec">
-      <div class="sec-title">
-        Requestor Information
-        <span class="tier-tag">Tier 1 &mdash; Dept Classification</span>
-      </div>
+      <div class="sec-title">Requestor Information</div>
       <div class="row">
         <div class="fld">
-          <label for="id_name">Full Name <span class="req">*</span></label>
+          <label for="f_name">Full Name <span class="req">*</span></label>
           {{ form.name }}
         </div>
         <div class="fld">
-          <label for="id_employee_id">Employee ID <span class="req">*</span></label>
+          <label for="f_empid">Employee ID <span class="req">*</span></label>
           {{ form.employee_id }}
         </div>
       </div>
       <div class="row">
         <div class="fld">
-          <label for="id_department">Department <span class="req">*</span></label>
+          <label for="f_dept">Department <span class="req">*</span></label>
           {{ form.department }}
-          <div class="dtb" id="deptBadge"></div>
         </div>
         <div class="fld">
-          <label for="id_email">Contact Email <span class="req">*</span></label>
+          <label for="f_email">Contact Email <span class="req">*</span></label>
           {{ form.email }}
         </div>
       </div>
     </div>
 
-    <!-- TIER 2-4: Issue Details with cascade dropdowns -->
+    <!-- SECTION 2: Issue Classification -->
     <div class="sec">
-      <div class="sec-title">
-        Issue Classification
-        <span class="tier-tag">Tier 2 &mdash; Category / Team &nbsp;&bull;&nbsp; Tier 3 &mdash; Sub-Type / Issue</span>
-      </div>
+      <div class="sec-title">Issue Classification</div>
 
-      <!-- Step 1: Category -->
-      <div class="row row1" style="margin-bottom:6px">
+      <div class="row row1">
         <div class="fld">
-          <label for="id_category">
-            Category <span class="req">*</span>
-            <span class="cascade-step">Step 1 of 3</span>
-          </label>
+          <label for="f_cat">Category <span class="req">*</span></label>
           {{ form.category }}
         </div>
       </div>
 
-      <!-- Step 2: Sub-type (filtered by category) -->
       <div class="cascade-arrow" id="arrow1">&#8595;</div>
-      <div class="row row1" style="margin-bottom:6px">
+
+      <div class="row row1">
         <div class="fld">
-          <label for="id_subtype">
-            Sub-Type
-            <span class="cascade-step" id="subHint">Select a category first</span>
-          </label>
+          <label for="f_sub">Sub-Type <span class="cascade-hint" id="subHint"></span></label>
           <select id="f_sub" name="subtype" onchange="onSubtypeChange()" disabled>
             <option value="">— Select a category first —</option>
           </select>
         </div>
       </div>
 
-      <!-- Step 3: Issue type (filtered by sub-type) -->
       <div class="cascade-arrow" id="arrow2">&#8595;</div>
+
       <div class="row row1">
         <div class="fld">
-          <label for="id_issue">
-            Specific Issue
-            <span class="cascade-step" id="issueHint">Select a sub-type first</span>
-          </label>
-          <select id="f_issue" name="issue_type" onchange="liveRoute()" disabled>
+          <label for="f_issue">Specific Issue <span class="cascade-hint" id="issueHint"></span></label>
+          <select id="f_issue" name="issue_type" disabled>
             <option value="">— Select a sub-type first —</option>
           </select>
         </div>
       </div>
 
-      <!-- Progress indicator -->
-      <div class="cascade-progress" id="cascadeProgress">
-        <div class="cp-step" id="cp1">
-          <div class="cp-dot"></div>
-          <span>Category</span>
-        </div>
-        <div class="cp-line"></div>
-        <div class="cp-step" id="cp2">
-          <div class="cp-dot"></div>
-          <span>Sub-Type</span>
-        </div>
-        <div class="cp-line"></div>
-        <div class="cp-step" id="cp3">
-          <div class="cp-dot"></div>
-          <span>Issue Type</span>
-        </div>
-      </div>
-
-      <div class="row row1" style="margin-top:16px">
+      <div class="row row1" style="margin-top:18px">
         <div class="fld">
-          <label for="id_title">Brief Summary <span class="req">*</span></label>
+          <label for="f_title">Brief Summary <span class="req">*</span></label>
           {{ form.title }}
         </div>
       </div>
+
       <div class="row row1">
         <div class="fld">
-          <label for="id_description">
-            Detailed Description
-            <span class="tier-tag" style="margin-left:4px">Tier 4 &mdash; Keyword Detection</span>
-          </label>
+          <label for="f_desc">Detailed Description</label>
           {{ form.description }}
         </div>
       </div>
+
       <div class="row row3">
         <div class="fld">
-          <label for="id_asset_tag">Asset Tag</label>
+          <label for="f_asset">Asset Tag</label>
           {{ form.asset_tag }}
         </div>
         <div class="fld">
-          <label for="id_location">Location</label>
+          <label for="f_loc">Location</label>
           {{ form.location }}
         </div>
         <div class="fld">
-          <label for="id_phone_ext">Phone Extension</label>
+          <label for="f_ext">Phone Extension</label>
           {{ form.phone_ext }}
         </div>
       </div>
     </div>
 
-    <!-- PRIORITY -->
-    <div class="sec" style="padding-bottom:20px">
-      <div class="sec-title">
-        Priority
-        <span class="tier-tag">Auto-suggested from all 4 tiers &mdash; override below</span>
-      </div>
-      <div class="pri-grid">
-        {% for value, label in form.fields.user_priority.choices %}
-          <div class="pri-wrap p{{ value }}">
-            <input type="radio" name="user_priority" id="pr{{ value }}" value="{{ value }}"
-              {% if value == 4 %}checked{% endif %} onchange="liveRoute()">
-            <label for="pr{{ value }}">
-              <div class="dot"></div>
-              <div class="pn">{{ label|truncatechars:10 }}</div>
-              <div class="pd">
-                {% if value == 1 %}City/dept-wide down{% endif %}
-                {% if value == 2 %}Team work halted{% endif %}
-                {% if value == 3 %}Workaround exists{% endif %}
-                {% if value == 4 %}Minor, no stoppage{% endif %}
-              </div>
-              <span class="atag">SUGGESTED</span>
-            </label>
-          </div>
-        {% endfor %}
-      </div>
-    </div>
-
   </form>
-</div>
-
-<!-- LIVE ROUTING PANEL -->
-<div class="rp" id="routingPanel">
-  <div class="rp-head">&#9889; Live Routing Decision</div>
-  <div class="rp-body">
-    <div class="rp-chain" id="rpChain"></div>
-    <div class="rp-meta" id="rpMeta"></div>
-    <div class="rp-reasons" id="rpReasons"></div>
-  </div>
 </div>
 
 <div style="display:flex;justify-content:flex-end;gap:10px;padding:12px 0 0">
@@ -190,266 +117,94 @@
 
 {% block extra_head %}
 <style>
-/* CASCADE STYLES */
-.cascade-step {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 9px; letter-spacing: .1em; text-transform: uppercase;
-  color: var(--steel); margin-left: 8px; font-style: normal;
-}
 .cascade-arrow {
-  text-align: center; color: var(--gold); font-size: 18px;
-  margin: 4px 0; opacity: .4; transition: opacity .2s;
+  text-align: center;
+  color: var(--gold);
+  font-size: 18px;
+  margin: 4px 0;
+  opacity: .25;
+  transition: opacity .2s;
 }
 .cascade-arrow.active { opacity: 1; }
-
-/* Progress tracker */
-.cascade-progress {
-  display: flex; align-items: center; gap: 0;
-  margin: 16px 0 4px; padding: 12px 16px;
-  background: rgba(8,17,31,.5); border-radius: var(--r);
-  border: 1px solid var(--border);
+.cascade-hint {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  letter-spacing: .08em;
+  color: var(--steel);
+  margin-left: 6px;
 }
-.cp-step { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 0 0 auto; }
-.cp-dot {
-  width: 10px; height: 10px; border-radius: 50%;
-  background: rgba(109,138,170,.2); border: 1.5px solid rgba(109,138,170,.3);
-  transition: all .25s;
-}
-.cp-step span { font-family: 'IBM Plex Mono',monospace; font-size: 9px; text-transform: uppercase; letter-spacing: .1em; color: var(--steel); }
-.cp-line { flex: 1; height: 1px; background: rgba(109,138,170,.2); margin: 0 8px; margin-bottom: 14px; transition: background .25s; }
-
-/* Active steps */
-.cp-step.done .cp-dot  { background: var(--green); border-color: var(--green-2); box-shadow: 0 0 6px rgba(62,207,142,.3); }
-.cp-step.done span     { color: var(--green-2); }
-.cp-step.active .cp-dot { background: var(--gold); border-color: var(--gold-2); box-shadow: 0 0 8px rgba(201,168,76,.3); }
-.cp-step.active span   { color: var(--gold-2); }
-.cp-line.done { background: var(--green); }
-
-/* Disabled select styling */
-select:disabled {
-  opacity: .45; cursor: not-allowed;
-  border-color: rgba(109,138,170,.15) !important;
-}
-select.cascade-ready {
-  border-color: rgba(201,168,76,.4) !important;
-  box-shadow: 0 0 0 2px rgba(201,168,76,.08);
-}
-select.cascade-done { border-color: rgba(62,207,142,.3) !important; }
+select:disabled { opacity: .45; cursor: not-allowed; }
+select.ready    { border-color: rgba(201,168,76,.35); }
+select.done     { border-color: rgba(62,207,142,.3); }
 </style>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-// ── CASCADE DATA from routing.py (injected by Django view) ─────────────────
 const CASCADE = {{ cascade_json|safe }};
 
-const ROUTE_URL = "{% url 'live_route' %}";
-const TIER_META = {
-  CRITICAL_INFRA: {label:"Critical Infrastructure", icon:"🔴", cls:"dtb-CRITICAL_INFRA"},
-  EXECUTIVE:      {label:"Executive",               icon:"🟡", cls:"dtb-EXECUTIVE"},
-  PUBLIC_SAFETY:  {label:"Public Safety Support",   icon:"🟣", cls:"dtb-PUBLIC_SAFETY"},
-  STANDARD:       {label:"Standard",                icon:"⚪", cls:"dtb-STANDARD"},
-};
-const DEPT_TIERS = {
-  "Police Department":"CRITICAL_INFRA","Fire Department":"CRITICAL_INFRA","Utilities":"CRITICAL_INFRA",
-  "City Manager's Office":"EXECUTIVE","Health Department":"PUBLIC_SAFETY"
-};
-const PL = {1:"Critical",2:"High",3:"Medium",4:"Low"};
-const PB = {1:"bp1",2:"bp2",3:"bp3",4:"bp4"};
-
-let _debounce = null;
-
-// ── STEP 1: Category changes → repopulate Sub-Type ─────────────────────────
 function onCategoryChange() {
-  const cat = document.getElementById("f_cat").value;
+  const cat      = document.getElementById("f_cat").value;
   const subSel   = document.getElementById("f_sub");
   const issueSel = document.getElementById("f_issue");
 
-  // Reset downstream dropdowns
-  _resetSelect(subSel,   "— Select sub-type —",   true);
-  _resetSelect(issueSel, "— Select a sub-type first —", true);
-
-  updateProgress(cat ? 1 : 0);
-
-  if (!cat || !CASCADE[cat]) {
-    document.getElementById("subHint").textContent = "Select a category first";
-    document.getElementById("issueHint").textContent = "Select a sub-type first";
-    document.getElementById("arrow1").classList.remove("active");
-    document.getElementById("arrow2").classList.remove("active");
-    subSel.disabled = true;
-    issueSel.disabled = true;
-    document.getElementById("routingPanel").classList.remove("show");
-    return;
-  }
-
-  // Populate sub-type options for this category
-  const subtypes = CASCADE[cat].subtypes;
-  subSel.innerHTML = '<option value="">— Select sub-type —</option>';
-  subtypes.forEach(([slug, label]) => {
-    const opt = document.createElement("option");
-    opt.value = slug; opt.textContent = label;
-    subSel.appendChild(opt);
-  });
-  subSel.disabled = false;
-  subSel.className = "cascade-ready";
-
-  document.getElementById("subHint").textContent = subtypes.length + " options available";
-  document.getElementById("arrow1").classList.add("active");
+  _reset(subSel,   "— Select a sub-type —",       true);
+  _reset(issueSel, "— Select a sub-type first —", true);
+  document.getElementById("subHint").textContent   = "";
+  document.getElementById("issueHint").textContent = "";
+  document.getElementById("arrow1").classList.remove("active");
   document.getElementById("arrow2").classList.remove("active");
 
-  // Update dept badge & trigger route
-  _updateDeptBadge();
-  liveRoute();
+  if (!cat || !CASCADE[cat]) return;
+
+  const subtypes = CASCADE[cat].subtypes;
+  subtypes.forEach(([slug, label]) => {
+    const opt = document.createElement("option");
+    opt.value = slug;
+    opt.textContent = label;
+    subSel.appendChild(opt);
+  });
+
+  subSel.disabled = false;
+  subSel.className = "ready";
+  document.getElementById("subHint").textContent = subtypes.length + " options";
+  document.getElementById("arrow1").classList.add("active");
 }
 
-// ── STEP 2: Sub-type changes → repopulate Issue Type ──────────────────────
 function onSubtypeChange() {
   const cat      = document.getElementById("f_cat").value;
   const sub      = document.getElementById("f_sub").value;
   const subSel   = document.getElementById("f_sub");
   const issueSel = document.getElementById("f_issue");
 
-  _resetSelect(issueSel, "— Select issue type —", true);
+  _reset(issueSel, "— Select an issue type —", true);
+  document.getElementById("issueHint").textContent = "";
+  document.getElementById("arrow2").classList.remove("active");
 
-  if (!sub) {
-    issueSel.disabled = true;
-    issueSel.className = "";
-    document.getElementById("issueHint").textContent = "Select a sub-type first";
-    document.getElementById("arrow2").classList.remove("active");
-    updateProgress(1);
-    liveRoute();
-    return;
-  }
+  if (!sub) { subSel.className = "ready"; return; }
 
-  // Mark sub as done
-  subSel.className = "cascade-done";
-  updateProgress(2);
+  subSel.className = "done";
 
   const issueTypes = CASCADE[cat]?.issue_types?.[sub];
-  if (!issueTypes || issueTypes.length === 0) {
-    issueSel.disabled = true;
-    document.getElementById("issueHint").textContent = "No further narrowing available";
-    document.getElementById("arrow2").classList.remove("active");
-    liveRoute();
-    return;
-  }
+  if (!issueTypes || issueTypes.length === 0) return;
 
-  // Populate issue types
-  issueSel.innerHTML = '<option value="">— Select issue type —</option>';
   issueTypes.forEach(([slug, label]) => {
     const opt = document.createElement("option");
-    opt.value = slug; opt.textContent = label;
+    opt.value = slug;
+    opt.textContent = label;
     issueSel.appendChild(opt);
   });
+
   issueSel.disabled = false;
-  issueSel.className = "cascade-ready";
-
-  document.getElementById("issueHint").textContent = issueTypes.length + " options available";
+  issueSel.className = "ready";
+  document.getElementById("issueHint").textContent = issueTypes.length + " options";
   document.getElementById("arrow2").classList.add("active");
-  liveRoute();
 }
 
-// ── PROGRESS INDICATOR ─────────────────────────────────────────────────────
-function updateProgress(step) {
-  // step: 0=nothing, 1=cat done, 2=sub done, 3=issue done
-  const steps = [
-    document.getElementById("cp1"),
-    document.getElementById("cp2"),
-    document.getElementById("cp3"),
-  ];
-  const lines = document.querySelectorAll(".cp-line");
-
-  steps.forEach((el, i) => {
-    el.classList.remove("active", "done");
-    if (i < step) el.classList.add("done");
-    else if (i === step) el.classList.add("active");
-  });
-  lines.forEach((el, i) => {
-    el.classList.toggle("done", i < step);
-  });
-
-  // Mark issue select as done when selected
-  if (step >= 3) {
-    document.getElementById("f_issue").className = "cascade-done";
-  }
-}
-
-// ── UTILITY ────────────────────────────────────────────────────────────────
-function _resetSelect(sel, placeholder, disable) {
+function _reset(sel, placeholder, disable) {
   sel.innerHTML = `<option value="">${placeholder}</option>`;
   sel.className = "";
-  if (disable) sel.disabled = true;
-}
-
-function _updateDeptBadge() {
-  const dept  = document.getElementById("f_dept")?.value || "";
-  const badge = document.getElementById("deptBadge");
-  const tier  = DEPT_TIERS[dept] || (dept ? "STANDARD" : "");
-  if (tier && TIER_META[tier]) {
-    const m = TIER_META[tier];
-    badge.className = "dtb show " + m.cls;
-    badge.innerHTML = "<strong>" + m.icon + " " + m.label + "</strong>";
-  } else {
-    badge.className = "dtb";
-  }
-}
-
-// ── LIVE ROUTING FETCH ─────────────────────────────────────────────────────
-function liveRoute() {
-  _updateDeptBadge();
-  clearTimeout(_debounce);
-  _debounce = setTimeout(_fetchRoute, 280);
-
-  // Update progress if issue type was just selected
-  const issueSel = document.getElementById("f_issue");
-  if (issueSel && !issueSel.disabled && issueSel.value) {
-    updateProgress(3);
-  }
-}
-
-function _fetchRoute() {
-  const dept  = document.getElementById("f_dept")?.value   || "";
-  const cat   = document.getElementById("f_cat")?.value    || "";
-  const sub   = document.getElementById("f_sub")?.value    || "";
-  const pri   = document.querySelector('input[name="user_priority"]:checked')?.value || "4";
-  const title = document.getElementById("f_title")?.value  || "";
-  const desc  = document.getElementById("f_desc")?.value   || "";
-
-  if (!dept || !cat) {
-    document.getElementById("routingPanel").classList.remove("show");
-    return;
-  }
-  const params = new URLSearchParams({dept, category:cat, subtype:sub, priority:pri, text:title+" "+desc});
-  fetch(ROUTE_URL + "?" + params)
-    .then(r => r.json())
-    .then(data => {
-      if (!data.ready) return;
-      _renderPanel(data);
-      _suggestPriority(data.suggested_priority);
-    });
-}
-
-function _suggestPriority(s) {
-  for (let i=1;i<=4;i++) {
-    const lbl = document.querySelector('label[for="pr'+i+'"]');
-    if (lbl) lbl.classList.toggle("suggested", i===s);
-  }
-}
-
-function _renderPanel(d) {
-  document.getElementById("routingPanel").classList.add("show");
-  document.getElementById("rpChain").innerHTML = d.escalation_path.map((s,i) =>
-    (i>0?'<span class="rp-arr">&rarr;</span>':'')+
-    '<span class="rp-step'+(i===0?' act':'')+
-    (i===d.escalation_path.length-1&&d.effective_priority<=2?' esc':'')+'">'
-    +s+'</span>'
-  ).join('');
-  document.getElementById("rpMeta").innerHTML =
-    '<div class="kv"><span>Team</span><strong>'+d.team+'</strong></div>' +
-    '<div class="kv"><span>Eff. Priority</span><strong><span class="badge '+PB[d.effective_priority]+'">'+d.priority_label+'</span>'+(d.was_modified?' <span style="font-size:10px;color:var(--amber-2)">(auto-adjusted)</span>':'')+'</strong></div>' +
-    '<div class="kv"><span>SLA Target</span><strong>'+d.sla+'</strong></div>' +
-    '<div class="kv"><span>Dept Tier</span><strong style="color:var(--steel-2)">'+d.tier_icon+' '+d.tier_label+'</strong></div>';
-  document.getElementById("rpReasons").innerHTML = d.reasons.map(r=>'&bull; '+r).join('<br>');
+  sel.disabled  = disable;
 }
 </script>
 {% endblock %}

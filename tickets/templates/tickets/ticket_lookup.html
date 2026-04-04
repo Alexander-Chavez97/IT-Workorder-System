@@ -1,0 +1,129 @@
+{% extends "tickets/base.html" %}
+{% block title %}Track a Ticket{% endblock %}
+{% block nav_lookup %}active{% endblock %}
+
+{% block content %}
+<div class="ph">
+  <h1>Track Your Ticket</h1>
+  <p>Enter your ticket reference number to check its current status and routing details.</p>
+</div>
+
+<!-- LOOKUP FORM -->
+<div class="card" style="max-width:520px">
+  <form method="GET" id="lookupForm">
+    <div class="sec">
+      <div class="sec-title">Ticket Reference Number</div>
+      <div class="fld" style="margin-bottom:0">
+        <label for="ticket_id">Enter Ticket ID <span class="req">*</span></label>
+        <div style="display:flex;gap:10px;align-items:center">
+          <input
+            type="text"
+            id="ticket_id"
+            name="ticket_id"
+            placeholder="e.g. TKT-0042"
+            value="{{ query|default:'' }}"
+            style="flex:1;text-transform:uppercase;font-family:'IBM Plex Mono',monospace;letter-spacing:.06em"
+            autocomplete="off"
+          >
+          <button type="submit" class="btn btn-primary" style="white-space:nowrap">Look Up &rarr;</button>
+        </div>
+        {% if error %}
+          <div style="margin-top:10px;font-size:12px;color:var(--red-2)">&#9888; {{ error }}</div>
+        {% endif %}
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- TICKET RESULT -->
+{% if ticket %}
+<div class="card" style="margin-top:18px">
+
+  <!-- Header row: ID + status badge -->
+  <div class="sec">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding-bottom:16px">
+      <div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:28px;color:var(--gold);font-weight:600;line-height:1">
+          {{ ticket.ticket_id }}
+        </div>
+        <div style="font-size:13px;color:var(--white);margin-top:6px">{{ ticket.title }}</div>
+        <div style="font-size:11px;color:var(--steel-2);margin-top:3px">
+          Submitted {{ ticket.submitted_at|date:"N j, Y" }} at {{ ticket.submitted_at|date:"g:i A" }}
+        </div>
+      </div>
+      <div style="text-align:right">
+        <span class="badge {{ ticket.status_badge_class }}" style="font-size:13px;padding:6px 14px">
+          {{ ticket.status }}
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Requestor info -->
+  <div class="sec">
+    <div class="sec-title">Submitted By</div>
+    <div class="mrow"><span class="mk">Name</span><span class="mv">{{ ticket.name }}</span></div>
+    <div class="mrow"><span class="mk">Employee ID</span><span class="mv" style="font-family:'IBM Plex Mono',monospace">{{ ticket.employee_id }}</span></div>
+    <div class="mrow"><span class="mk">Department</span><span class="mv">{{ ticket.department }}</span></div>
+    <div class="mrow"><span class="mk">Email</span><span class="mv">{{ ticket.email }}</span></div>
+  </div>
+
+  <!-- Issue details -->
+  <div class="sec">
+    <div class="sec-title">Issue Details</div>
+    <div class="mrow"><span class="mk">Category</span><span class="mv">{{ ticket.category|capfirst }}</span></div>
+    {% if ticket.subtype %}
+    <div class="mrow"><span class="mk">Sub-Type</span><span class="mv">{{ ticket.subtype }}</span></div>
+    {% endif %}
+    {% if ticket.issue_type %}
+    <div class="mrow"><span class="mk">Specific Issue</span><span class="mv">{{ ticket.issue_type }}</span></div>
+    {% endif %}
+    {% if ticket.description %}
+    <div class="mrow" style="align-items:flex-start">
+      <span class="mk" style="padding-top:2px">Description</span>
+      <span class="mv" style="white-space:pre-wrap;line-height:1.6">{{ ticket.description }}</span>
+    </div>
+    {% endif %}
+    {% if ticket.location %}
+    <div class="mrow"><span class="mk">Location</span><span class="mv">{{ ticket.location }}</span></div>
+    {% endif %}
+    {% if ticket.asset_tag %}
+    <div class="mrow"><span class="mk">Asset Tag</span><span class="mv" style="font-family:'IBM Plex Mono',monospace">{{ ticket.asset_tag }}</span></div>
+    {% endif %}
+  </div>
+
+  <!-- Routing decision -->
+  <div class="sec">
+    <div class="sec-title">Routing & Assignment</div>
+    <div class="mrow">
+      <span class="mk">Priority</span>
+      <span class="mv">
+        <span class="badge {{ ticket.priority_badge_class }}">{{ ticket.effective_priority_label }}</span>
+        {% if ticket.routing_was_modified %}
+          <span style="font-size:10px;color:var(--amber-2);margin-left:6px">(auto-adjusted by routing engine)</span>
+        {% endif %}
+      </span>
+    </div>
+    <div class="mrow"><span class="mk">Assigned Team</span><span class="mv" style="color:var(--white);font-weight:500">{{ ticket.routing_team }}</span></div>
+    <div class="mrow"><span class="mk">Dept Tier</span><span class="mv">{{ ticket.routing_tier_label }}</span></div>
+    <div class="mrow"><span class="mk">SLA Target</span><span class="mv" style="color:var(--gold);font-family:'IBM Plex Mono',monospace">{{ ticket.routing_sla }}</span></div>
+  </div>
+
+  <!-- Rules applied -->
+  {% if ticket.routing_reasons_list %}
+  <div class="sec" style="padding-bottom:20px">
+    <div class="sec-title">How This Ticket Was Routed</div>
+    {% for reason in ticket.routing_reasons_list %}
+      <div style="font-size:12px;color:var(--steel-2);margin-bottom:6px">&bull; {{ reason }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+</div>
+
+<div style="padding:14px 0 0">
+  <a href="{% url 'ticket_lookup' %}" class="btn btn-ghost">Look Up Another Ticket</a>
+</div>
+{% endif %}
+
+{% endblock %}

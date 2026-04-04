@@ -42,9 +42,8 @@
       </div>
 
       <div class="sec" style="padding-bottom:20px">
-        <div class="sec-title">Priority</div>
-        <div class="mrow"><span class="mk">User-Selected</span><span class="mv"><span class="badge {{ ticket.priority_badge_class }}" style="opacity:.6">{{ ticket.user_priority_label }}</span></span></div>
-        <div class="mrow"><span class="mk">Effective</span>
+        <div class="sec-title">Priority & Status</div>
+        <div class="mrow"><span class="mk">Effective Priority</span>
           <span class="mv">
             <span class="badge {{ ticket.priority_badge_class }}">{{ ticket.effective_priority_label }}</span>
             {% if ticket.routing_was_modified %}<span style="font-size:10px;color:var(--amber-2);margin-left:6px">(auto-elevated)</span>{% endif %}
@@ -52,12 +51,84 @@
         </div>
         <div class="mrow"><span class="mk">Status</span><span class="mv"><span class="badge {{ ticket.status_badge_class }}">{{ ticket.status }}</span></span></div>
         <div class="mrow"><span class="mk">Submitted</span><span class="mv">{{ ticket.submitted_at|date:"N j, Y g:i A" }}</span></div>
+        <div class="mrow"><span class="mk">Last Updated</span><span class="mv">{{ ticket.updated_at|date:"N j, Y g:i A" }}</span></div>
+      </div>
+    </div>
+
+    <!-- HISTORY TIMELINE -->
+    <div class="card">
+      <div class="sec">
+        <div class="sec-title">Ticket History</div>
+
+        {% if history %}
+        <div class="timeline">
+          {% for entry in history %}
+          <div class="tl-entry">
+            <div class="tl-dot tl-{{ entry.action|lower }}"></div>
+            <div class="tl-body">
+              <div class="tl-header">
+                <span class="tl-action tl-action-{{ entry.action|lower }}">{{ entry.action }}</span>
+                {% if entry.changed_by %}
+                  <span class="tl-by">by {{ entry.changed_by }}</span>
+                {% endif %}
+                <span class="tl-time">{{ entry.timestamp|date:"N j, Y g:i A" }}</span>
+              </div>
+
+              {% if entry.action == "Escalated" %}
+                <div class="tl-detail">
+                  Priority changed from
+                  <span class="badge bp{{ entry.priority_before }}">{{ entry.priority_before_label }}</span>
+                  &rarr;
+                  <span class="badge bp{{ entry.priority_after }}">{{ entry.priority_after_label }}</span>
+                  {% if entry.team_before != entry.team_after and entry.team_after %}
+                    &nbsp;&bull;&nbsp; Assigned to <strong>{{ entry.team_after }}</strong>
+                  {% endif %}
+                </div>
+              {% endif %}
+
+              {% if entry.action == "Assigned" and entry.team_after %}
+                <div class="tl-detail">
+                  Assigned to <strong>{{ entry.team_after }}</strong>
+                  {% if entry.team_before %} from {{ entry.team_before }}{% endif %}
+                </div>
+              {% endif %}
+
+              {% if entry.note %}
+                <div class="tl-note">{{ entry.note }}</div>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+          <div style="font-size:12px;color:var(--steel);padding:8px 0">No history entries yet.</div>
+        {% endif %}
+      </div>
+
+      <!-- ADD NOTE FORM -->
+      <div class="sec" style="padding-bottom:20px">
+        <div class="sec-title">Add Note</div>
+        <form method="POST">
+          {% csrf_token %}
+          <div class="fld" style="margin-bottom:10px">
+            <textarea
+              name="note_text"
+              id="note_text"
+              rows="3"
+              placeholder="Add an internal note — visible to IST staff only..."
+              style="width:100%;resize:vertical"
+            ></textarea>
+          </div>
+          <button type="submit" name="action" value="add_note" class="btn btn-ghost btn-sm">
+            Save Note
+          </button>
+        </form>
       </div>
     </div>
 
   </div>
 
-  <!-- RIGHT: Routing card + actions -->
+  <!-- RIGHT: Routing + actions -->
   <div style="display:flex;flex-direction:column;gap:16px">
 
     <div class="card">
@@ -113,4 +184,84 @@
 
   </div>
 </div>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+/* ── Timeline ─────────────────────────────────────────── */
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 4px 0 16px;
+}
+.tl-entry {
+  display: flex;
+  gap: 14px;
+  position: relative;
+}
+.tl-entry:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 18px;
+  bottom: -4px;
+  width: 1px;
+  background: rgba(109,138,170,.18);
+}
+.tl-dot {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 4px;
+  border: 2px solid;
+}
+.tl-created   { background: rgba(62,207,142,.15);  border-color: var(--green-2); }
+.tl-escalated { background: rgba(224,80,80,.15);   border-color: var(--red-2); }
+.tl-resolved  { background: rgba(62,207,142,.2);   border-color: var(--green-2); }
+.tl-note      { background: rgba(201,168,76,.15);  border-color: var(--gold); }
+.tl-assigned  { background: rgba(109,138,170,.15); border-color: var(--steel-2); }
+.tl-reopened  { background: rgba(201,168,76,.15);  border-color: var(--gold); }
+
+.tl-body { flex: 1; padding-bottom: 16px; }
+.tl-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.tl-action {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+.tl-action-created   { background: rgba(62,207,142,.12);  color: var(--green-2); }
+.tl-action-escalated { background: rgba(224,80,80,.12);   color: var(--red-2); }
+.tl-action-resolved  { background: rgba(62,207,142,.12);  color: var(--green-2); }
+.tl-action-note      { background: rgba(201,168,76,.12);  color: var(--gold); }
+.tl-action-assigned  { background: rgba(109,138,170,.12); color: var(--steel-2); }
+.tl-action-reopened  { background: rgba(201,168,76,.12);  color: var(--gold); }
+
+.tl-by   { font-size: 11px; color: var(--steel-2); }
+.tl-time { font-size: 10px; color: var(--steel);
+           font-family: 'IBM Plex Mono', monospace; margin-left: auto; }
+.tl-detail { font-size: 12px; color: var(--steel-2); margin-bottom: 4px; }
+.tl-note {
+  font-size: 12px;
+  color: var(--white);
+  background: rgba(201,168,76,.06);
+  border-left: 2px solid var(--gold);
+  padding: 6px 10px;
+  border-radius: 0 4px 4px 0;
+  margin-top: 4px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+</style>
 {% endblock %}
