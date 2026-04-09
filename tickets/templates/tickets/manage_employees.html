@@ -8,15 +8,47 @@
   <p>View all IST Staff and IST Admin employees.</p>
 </div>
 
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+  <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--steel)">
+    Export current view:
+  </span>
+  <div style="display:flex;gap:6px">
+    <a href="{% url 'export_employees_csv' %}?role={{ role_filter }}&active={{ active_filter }}"
+       class="btn btn-ghost btn-sm" style="display:flex;align-items:center;gap:5px">
+      <span style="font-size:11px">&#8595;</span> CSV
+    </a>
+    <a href="{% url 'export_employees_xlsx' %}?role={{ role_filter }}&active={{ active_filter }}"
+       class="btn btn-ghost btn-sm" style="display:flex;align-items:center;gap:5px;color:var(--green-2);border-color:rgba(62,207,142,.3)">
+      <span style="font-size:11px">&#8595;</span> XLSX
+    </a>
+    <a href="{% url 'export_employees_pdf' %}?role={{ role_filter }}&active={{ active_filter }}"
+       class="btn btn-ghost btn-sm" style="display:flex;align-items:center;gap:5px;color:var(--red-2);border-color:rgba(224,80,80,.3)">
+      <span style="font-size:11px">&#8595;</span> PDF
+    </a>
+  </div>
+</div>
+
 <div class="table-card">
   <div class="ttb">
     <span class="ttb-title">Employee Queue</span>
+    <div class="ttb-filters">
+      <select class="fslt" name="role" onchange="this.form.submit()">
+        {% for val, lbl in role_choices %}
+          <option value="{{ val }}" {% if val == role_filter %}selected{% endif %}>{{ lbl }}</option>
+        {% endfor %}
+      </select>
+      <select class="fslt" name="active" onchange="this.form.submit()">
+        {% for val, lbl in active_choices %}
+          <option value="{{ val }}" {% if val == active_filter %}selected{% endif %}>{{ lbl }}</option>
+        {% endfor %}
+      </select>
+    </div>
   </div>
 
   <table>
     <thead>
       <tr>
-        <th>Employee ID</th>
+        <th>ID</th>
         <th>Name</th>
         <th>Email</th>
         <th>Department</th>

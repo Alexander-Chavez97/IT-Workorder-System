@@ -35,4 +35,8 @@ urlpatterns = [
 
     path("manage_employees/<int:employee_id>/", views.employee_detail, name="employee_detail"),
 
+    path("manage_employees/export/csv/", views.export_employees_csv, name="export_employees_csv"),
+    path("manage_employees/export/xlsx/", views.export_employees_xlsx, name="export_employees_xlsx"),
+    path("manage_employees/export/pdf/", views.export_employees_pdf, name="export_employees_pdf"),
+
 ]
