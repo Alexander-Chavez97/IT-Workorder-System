@@ -419,11 +419,12 @@ EXPORT_COLUMNS = [
     ("routing_was_modified",    "Auto-Adjusted"),
 ]
 EMPLOYEE_EXPORT_COLUMNS = [
-    ("ticket_id",               "Ticket ID"),
-    ("submitted_at",            "Submitted"),
-    ("name",                    "Employee Name"),
-    ("employee_id",             "Employee ID"),
-    ("department",              "Department"),
+    ("employee_id", "Employee ID"),
+    ("full_name", "Employee Name"),
+    ("department", "Department"),
+    ("role", "Role"),
+    ("is_active", "Status"),
+    ("created_at", "Account Created"),
 ]
 
 
@@ -772,7 +773,6 @@ def get_manage_employees_queryset(request):
 def _employee_row(employee):
     return [
         employee.employee_id,
-        employee.employee_id, 
         employee.full_name[:18],
         employee.department[:33],
         employee.get_role_display()[:10],
@@ -826,68 +826,65 @@ def export_employees_xlsx(request):
         from openpyxl.utils import get_column_letter
     except ImportError:
         return HttpResponse("openpyxl not installed. Run: pip install openpyxl", status=500)
-        
+
     employees = get_manage_employees_queryset(request)
 
     wb = Workbook()
     ws = wb.active
     ws.title = "Employees"
-    
+
     # ── Colour palette
-    NAVY   = "08111F"
-    GOLD   = "C9A84C"
-    WHITE  = "EEF2F8"
-    GREY   = "1E3358"
+    NAVY = "08111F"
+    GOLD = "C9A84C"
+    WHITE = "EEF2F8"
+    GREY = "1E3358"
 
     # ── Title row
-    ws.merge_cells("A1:O1")
+    ws.merge_cells("A1:F1")
     title_cell = ws["A1"]
     title_cell.value = "City of Laredo IST — Employee Export"
-    title_cell.font      = Font(name="Calibri", bold=True, size=14, color=WHITE)
-    title_cell.fill      = PatternFill("solid", fgColor=NAVY)
+    title_cell.font = Font(name="Calibri", bold=True, size=14, color=WHITE)
+    title_cell.fill = PatternFill("solid", fgColor=NAVY)
     title_cell.alignment = Alignment(horizontal="center", vertical="center")
     ws.row_dimensions[1].height = 28
 
     # ── Header row
-    header_fill   = PatternFill("solid", fgColor=GREY)
-    header_font   = Font(name="Calibri", bold=True, size=10, color=GOLD)
+    header_fill = PatternFill("solid", fgColor=GREY)
+    header_font = Font(name="Calibri", bold=True, size=10, color=GOLD)
     header_border = Border(
         bottom=Side(style="thin", color=GOLD),
         right=Side(style="thin", color="2A3A55"),
     )
-    
-    for col_idx, (_, label) in enumerate(EMPLOYEE_EXPORT_COLUMNS[0], start=1):
+
+    for col_idx, (_, label) in enumerate(EMPLOYEE_EXPORT_COLUMNS, start=1):
         cell = ws.cell(row=2, column=col_idx, value=label)
-        cell.font      = header_font
-        cell.fill      = header_fill
-        cell.border    = header_border
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.border = header_border
         cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
     ws.row_dimensions[2].height = 32
-    
-     # ── Data rows — zebra striping
+
+    # ── Data rows — zebra striping
     EVEN_FILL = PatternFill("solid", fgColor="0F1E35")
-    ODD_FILL  = PatternFill("solid", fgColor="162845")
+    ODD_FILL = PatternFill("solid", fgColor="162845")
     data_font = Font(name="Calibri", size=10, color=WHITE)
-    
+
     for row_idx, employee in enumerate(employees, start=3):
         row_data = _employee_row(employee)
         fill = EVEN_FILL if row_idx % 2 == 0 else ODD_FILL
 
         for col_idx, value in enumerate(row_data, start=1):
             cell = ws.cell(row=row_idx, column=col_idx, value=value)
-            cell.font      = data_font
-            cell.fill      = fill
+            cell.font = data_font
+            cell.fill = fill
             cell.alignment = Alignment(vertical="center", wrap_text=False)
 
-        # Highlight priority cell
-        pri_cell  = ws.cell(row=row_idx, column=11)
-        pri_cell.font = Font(name="Calibri", bold=True, size=10, color=GOLD)
-
     # ── Column widths
-    col_widths = [12, 16, 22, 14, 22, 20, 12, 16, 18, 40, 14, 28, 10, 12, 14]
+    col_widths = [16, 24, 24, 16, 14, 22]
     for i, w in enumerate(col_widths, start=1):
         ws.column_dimensions[get_column_letter(i)].width = w
-    
+
     # ── Freeze header rows
     ws.freeze_panes = "A3"
 
@@ -902,7 +899,6 @@ def export_employees_xlsx(request):
     response["Content-Disposition"] = 'attachment; filename="laredo_ist_employees.xlsx"'
     return response
     
- 
 
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
