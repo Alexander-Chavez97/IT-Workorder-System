@@ -240,6 +240,8 @@ tbody td{padding:11px 14px;font-size:12px;vertical-align:middle;}
     <a class="nav-link {% block nav_lookup %}{% endblock %}" href="{% url 'ticket_lookup' %}">Track Ticket</a>
     {% if request.session.employee_role == "ist" or request.session.employee_role == "admin" %}
     <a class="nav-link {% block nav_admin %}{% endblock %}" href="{% url 'admin_queue' %}">Admin Queue</a>
+    <a class="nav-link {% block nav_manage %}{% endblock %}" href="{% url 'manage_employees' %}">Manage Employees</a>
+
     {% endif %}
     {% if request.session.employee_name %}
       <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--steel-2);padding:0 10px;display:flex;align-items:center;gap:6px;border-left:1px solid var(--border)">

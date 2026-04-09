@@ -1,0 +1,148 @@
+{% extends "tickets/base.html" %}
+{% block title %}Employee Detail{% endblock %}
+{% block nav_manage %}active{% endblock %}
+
+{% block content %}
+<div class="ph">
+  <h1>Employee Detail</h1>
+  <p>View employee account information, role, department, and current status.</p>
+</div>
+
+<div class="table-card"style="margin-bottom:15px">
+  <div class="ttb">
+    <span class="ttb-title">Employee Record</span>
+    <div style="display:flex;gap:6px">
+      <a href="{% url 'manage_employees' %}" class="btn btn-ghost btn-sm">
+        Back to Employees
+      </a>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th colspan="2">Account Information</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td style="width:220px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--steel);text-transform:uppercase;letter-spacing:.08em;">
+          Employee ID
+        </td>
+        <td><span class="tid">{{ employee.employee_id }}</span></td>
+      </tr>
+      <tr>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--steel);text-transform:uppercase;letter-spacing:.08em;">
+          Full Name
+        </td>
+        <td>{{ employee.full_name }}</td>
+      </tr>
+      <tr>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--steel);text-transform:uppercase;letter-spacing:.08em;">
+          Email
+        </td>
+        <td>{{ employee.email }}</td>
+      </tr>
+      <tr>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--steel);text-transform:uppercase;letter-spacing:.08em;">
+          Department
+        </td>
+        <td>{{ employee.department }}</td>
+      </tr>
+      <tr>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--steel);text-transform:uppercase;letter-spacing:.08em;">
+          Role
+        </td>
+        <td>
+          <span class="badge">
+            {{ employee.get_role_display }}
+          </span>
+        </td>
+      </tr>
+      <tr>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--steel);text-transform:uppercase;letter-spacing:.08em;">
+          Status
+        </td>
+        <td>
+          {% if employee.is_active %}
+            <span class="badge" style="color:var(--green-2);border-color:rgba(62,207,142,.3);">
+              Active
+            </span>
+          {% else %}
+            <span class="badge" style="color:var(--red-2);border-color:rgba(224,80,80,.3);">
+              Inactive
+            </span>
+          {% endif %}
+        </td>
+      </tr>
+      <tr>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--steel);text-transform:uppercase;letter-spacing:.08em;">
+          Created At
+        </td>
+        <td>{{ employee.created_at }}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="table-card">
+  <div class="ttb">
+    <span class="ttb-title">Ticket History</span>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Ticket ID</th>
+          <th>Action</th>
+          <th>Expanded</th>
+          <th>Changed By</th>
+          <th>Team Before</th>
+          <th>Team After</th>
+          <th>Priority Change</th>
+          <th>Timestamp</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for record in history_records %}
+        <tr>
+
+          <td>
+            <a href="{% url 'ticket_detail' record.ticket.ticket_id %}" class="tid">
+              {{ record.ticket.ticket_id }}
+          </td>
+          
+          <td>
+            <span class="badge">{{ record.action }}</span>
+          </td>
+          <td style="max-width:260px;">
+            {% if record.note %}
+              {{ record.note }}
+            {% else %}
+              —
+            {% endif %}
+          </td>
+          <td>{{ record.changed_by|default:"—" }}</td>
+          <td>{{ record.team_before|default:"—" }}</td>
+          <td>{{ record.team_after|default:"—" }}</td>
+          <td>
+            {% if record.priority_before or record.priority_after %}
+              {{ record.priority_before_label|default:"—" }} → {{ record.priority_after_label|default:"—" }}
+            {% else %}
+              —
+            {% endif %}
+          </td>
+          <td>{{ record.timestamp }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="8" style="text-align:center;padding:24px;color:var(--steel)">
+            No ticket history found for this employee.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

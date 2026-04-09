@@ -14,6 +14,7 @@ import csv
 import io
 import json
 from functools import wraps
+from openpyxl import Workbook
 
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse, HttpResponse
@@ -417,6 +418,15 @@ EXPORT_COLUMNS = [
     ("status",                  "Status"),
     ("routing_was_modified",    "Auto-Adjusted"),
 ]
+EMPLOYEE_EXPORT_COLUMNS = [
+    ("employee_id", "Employee ID"),
+    ("full_name", "Employee Name"),
+    ("department", "Department"),
+    ("role", "Role"),
+    ("is_active", "Status"),
+    ("created_at", "Account Created"),
+]
+
 
 
 def _ticket_row(ticket):
@@ -702,3 +712,360 @@ def export_pdf(request):
     response = HttpResponse(buffer.getvalue(), content_type="application/pdf")
     response["Content-Disposition"] = 'attachment; filename="laredo_ist_tickets.pdf"'
     return response
+
+from django.shortcuts import render
+from .models import Employee, EmployeeRole
+
+from django.shortcuts import render
+from .models import Employee, EmployeeRole
+
+def manage_employees(request):
+    role_filter = request.GET.get("role", "all")
+    active_filter = request.GET.get("active", "all")
+
+    employees = Employee.objects.filter(
+        role__in=[EmployeeRole.IST, EmployeeRole.ADMIN]
+    ).order_by("last_name", "first_name")
+
+    if role_filter in [EmployeeRole.IST, EmployeeRole.ADMIN]:
+        employees = employees.filter(role=role_filter)
+
+    if active_filter == "active":
+        employees = employees.filter(is_active=True)
+    elif active_filter == "inactive":
+        employees = employees.filter(is_active=False)
+
+    context = {
+        "employees": employees,
+        "role_filter": role_filter,
+        "active_filter": active_filter,
+        "role_choices": [
+            ("all", "All IST Employees"),
+            (EmployeeRole.IST, "IST Staff"),
+            (EmployeeRole.ADMIN, "IST Admin"),
+        ],
+        "active_choices": [
+            ("all", "All Statuses"),
+            ("active", "Active"),
+            ("inactive", "Inactive"),
+        ],
+    }
+    return render(request, "tickets/manage_employees.html", context)
+
+def get_manage_employees_queryset(request):
+    role_filter = request.GET.get("role", "all")
+    active_filter = request.GET.get("active", "all")
+
+    employees = Employee.objects.filter(
+        role__in=[EmployeeRole.IST, EmployeeRole.ADMIN]
+    ).order_by("last_name", "first_name")
+
+    if role_filter in [EmployeeRole.IST, EmployeeRole.ADMIN]:
+        employees = employees.filter(role=role_filter)
+
+    if active_filter == "active":
+        employees = employees.filter(is_active=True)
+    elif active_filter == "inactive":
+        employees = employees.filter(is_active=False)
+
+    return employees
+
+def _employee_row(employee):
+    return [
+        employee.employee_id,
+        employee.full_name[:18],
+        employee.department[:33],
+        employee.get_role_display()[:10],
+            "Active" if employee.is_active else "Inactive",
+        employee.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+    ]
+
+def export_employees_csv(request):
+    employees = get_manage_employees_queryset(request)
+
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = 'attachment; filename="employees.csv"'
+
+    writer = csv.writer(response)
+    writer.writerow([
+        "Employee ID",
+        "First Name",
+        "Last Name",
+        "Full Name",
+        "Email",
+        "Department",
+        "Role",
+        "Status",
+        "Created At",
+        #"Tickets Interacted With",
+    ])
+    # Want to create another column in reports that shows # of tickets 
+    # that each employee has had an interaction with
+    # includes: notes/actions
+
+    for employee in employees:
+        writer.writerow([
+            employee.employee_id,
+            employee.first_name,
+            employee.last_name,
+            employee.full_name,
+            employee.email,
+            employee.department,
+            employee.get_role_display(),
+            "Active" if employee.is_active else "Inactive",
+            employee.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+        ])
+
+    return response
+
+@ist_required
+def export_employees_xlsx(request):
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+        from openpyxl.utils import get_column_letter
+    except ImportError:
+        return HttpResponse("openpyxl not installed. Run: pip install openpyxl", status=500)
+
+    employees = get_manage_employees_queryset(request)
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Employees"
+
+    # ── Colour palette
+    NAVY = "08111F"
+    GOLD = "C9A84C"
+    WHITE = "EEF2F8"
+    GREY = "1E3358"
+
+    # ── Title row
+    ws.merge_cells("A1:F1")
+    title_cell = ws["A1"]
+    title_cell.value = "City of Laredo IST — Employee Export"
+    title_cell.font = Font(name="Calibri", bold=True, size=14, color=WHITE)
+    title_cell.fill = PatternFill("solid", fgColor=NAVY)
+    title_cell.alignment = Alignment(horizontal="center", vertical="center")
+    ws.row_dimensions[1].height = 28
+
+    # ── Header row
+    header_fill = PatternFill("solid", fgColor=GREY)
+    header_font = Font(name="Calibri", bold=True, size=10, color=GOLD)
+    header_border = Border(
+        bottom=Side(style="thin", color=GOLD),
+        right=Side(style="thin", color="2A3A55"),
+    )
+
+    for col_idx, (_, label) in enumerate(EMPLOYEE_EXPORT_COLUMNS, start=1):
+        cell = ws.cell(row=2, column=col_idx, value=label)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.border = header_border
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+    ws.row_dimensions[2].height = 32
+
+    # ── Data rows — zebra striping
+    EVEN_FILL = PatternFill("solid", fgColor="0F1E35")
+    ODD_FILL = PatternFill("solid", fgColor="162845")
+    data_font = Font(name="Calibri", size=10, color=WHITE)
+
+    for row_idx, employee in enumerate(employees, start=3):
+        row_data = _employee_row(employee)
+        fill = EVEN_FILL if row_idx % 2 == 0 else ODD_FILL
+
+        for col_idx, value in enumerate(row_data, start=1):
+            cell = ws.cell(row=row_idx, column=col_idx, value=value)
+            cell.font = data_font
+            cell.fill = fill
+            cell.alignment = Alignment(vertical="center", wrap_text=False)
+
+    # ── Column widths
+    col_widths = [16, 24, 24, 16, 14, 22]
+    for i, w in enumerate(col_widths, start=1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+
+    # ── Freeze header rows
+    ws.freeze_panes = "A3"
+
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    response = HttpResponse(
+        output.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    response["Content-Disposition"] = 'attachment; filename="laredo_ist_employees.xlsx"'
+    return response
+    
+
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+
+def export_employees_pdf(request):
+    try:
+        from reportlab.lib import colors
+        from reportlab.lib.pagesizes import letter, landscape
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.units import inch
+        from reportlab.platypus import (
+            SimpleDocTemplate, Table, TableStyle, Paragraph,
+            Spacer, HRFlowable,
+        )
+    except ImportError:
+        return HttpResponse("reportlab not installed. Run: pip install reportlab", status=500)
+
+    from django.utils import timezone as tz
+    
+    employees = get_manage_employees_queryset(request)
+    
+    # ── Page setup
+    # Landscape letter = 11" x 8.5".  Margins 0.4" each side → 10.2" usable.
+    PAGE       = landscape(letter)
+    LEFT_MARGIN = 0.4 * inch
+    USABLE_W   = PAGE[0] - (LEFT_MARGIN * 2)   # 10.2 inches
+
+    buffer = io.BytesIO()
+    doc    = SimpleDocTemplate(
+        buffer,
+        pagesize=PAGE,
+        leftMargin=LEFT_MARGIN, rightMargin=LEFT_MARGIN,
+        topMargin=0.55*inch,    bottomMargin=0.45*inch,
+    )
+
+    # ── Colours (black and white)
+    BLACK     = colors.black
+    WHITE     = colors.white
+    DARK_GREY = colors.HexColor("#222222")
+    MID_GREY  = colors.HexColor("#555555")
+    LIGHT_GREY= colors.HexColor("#DDDDDD")
+    HDR_BG    = colors.HexColor("#222222")
+    ROW_A     = colors.white
+    ROW_B     = colors.HexColor("#F5F5F5")
+
+    response = HttpResponse(content_type="application/pdf")
+    response["Content-Disposition"] = 'attachment; filename="employees.pdf"'
+
+     # ── Paragraph styles for wrapping cell text
+    styles = getSampleStyleSheet()
+
+    cell_style = ParagraphStyle(
+        "cell", parent=styles["Normal"],
+        fontSize=7.5, leading=10,
+        textColor=DARK_GREY, fontName="Helvetica",
+        wordWrap="LTR", splitLongWords=True,
+    )
+    cell_bold = ParagraphStyle(
+        "cell_bold", parent=cell_style,
+        fontName="Helvetica-Bold", textColor=BLACK,
+    )
+    cell_mono = ParagraphStyle(
+        "cell_mono", parent=cell_style,
+        fontName="Courier", fontSize=7, textColor=MID_GREY,
+    )
+    cell_grey = ParagraphStyle(
+        "cell_grey", parent=cell_style,
+        textColor=MID_GREY,
+    )
+    hdr_style = ParagraphStyle(
+        "hdr", parent=styles["Normal"],
+        fontSize=7.5, leading=10,
+        textColor=WHITE, fontName="Helvetica-Bold",
+        alignment=1,
+    )
+    title_style = ParagraphStyle(
+        "title", parent=styles["Heading1"],
+        textColor=WHITE, backColor=HDR_BG,
+        fontSize=14, spaceAfter=4, spaceBefore=0,
+        leftIndent=6,
+    )
+    sub_style = ParagraphStyle(
+        "sub", parent=styles["Normal"],
+        textColor=MID_GREY, fontSize=9, spaceAfter=8,
+    )
+    
+    story = []
+    story.append(Paragraph("City of Laredo — IST Employee Report", title_style))
+    story.append(Paragraph(
+        f"Generated: {tz.localtime().strftime('%B %d, %Y at %I:%M %p')}  ·  "
+        f"Total employees: {len(employees)}",
+        sub_style,
+    ))
+    story.append(HRFlowable(width="100%", thickness=1, color=DARK_GREY, spaceAfter=6))
+    col_w = [inch * w for w in [0.72, 0.88,   1.65,       1.40,   0.62,  0.72,     1.90,    0.65,  1.30,  0.48, 0.78]]
+
+
+    headers = ["ID", "Name", "Email", "Department", "Role", "Status", "Created At"]
+
+    table_data = [[Paragraph(h, hdr_style) for h in headers]]
+
+
+    for employee in employees:
+        table_data.append([
+            Paragraph(employee.employee_id, cell_mono),
+            Paragraph(employee.full_name[:18], cell_grey),
+            Paragraph(employee.email[:25], cell_style),
+            Paragraph(employee.department[:33], cell_style),
+            Paragraph(employee.get_role_display()[:10], cell_mono),
+            Paragraph("Active" if employee.is_active else "Inactive", cell_grey),
+            Paragraph(employee.created_at.strftime("%Y-%m-%d %H:%M:%S"), cell_mono),
+            ])
+
+        
+    tbl = Table(table_data, colWidths=col_w, repeatRows=1)
+
+    tbl_style = TableStyle([
+        # Header row
+        ("BACKGROUND",    (0, 0), (-1, 0),  HDR_BG),
+        ("TOPPADDING",    (0, 0), (-1, 0),  7),
+        ("BOTTOMPADDING", (0, 0), (-1, 0),  7),
+        ("LEFTPADDING",   (0, 0), (-1, 0),  4),
+        ("RIGHTPADDING",  (0, 0), (-1, 0),  4),
+        # Data rows — alternating white / light grey
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [ROW_A, ROW_B]),
+        ("TOPPADDING",    (0, 1), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 1), (-1, -1), 4),
+        ("LEFTPADDING",   (0, 1), (-1, -1), 4),
+        ("RIGHTPADDING",  (0, 1), (-1, -1), 4),
+        # Grid
+        ("GRID",   (0, 0), (-1, -1), 0.35, LIGHT_GREY),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+    ])
+    # No priority background colouring — B&W only
+
+    tbl.setStyle(tbl_style)
+    story.append(tbl)
+    
+    # ── Page footer
+    def on_page(canvas, doc):
+        canvas.saveState()
+        canvas.setFillColor(HDR_BG)
+        canvas.rect(0, 0, PAGE[0], 0.38*inch, fill=True, stroke=False)
+        canvas.setFont("Helvetica", 7)
+        canvas.setFillColor(WHITE)
+        canvas.drawString(0.4*inch, 0.13*inch,
+                          "City of Laredo — Information Systems & Technology")
+        canvas.drawRightString(PAGE[0] - 0.4*inch, 0.13*inch, f"Page {doc.page}")
+        canvas.restoreState()
+
+    doc.build(story, onFirstPage=on_page, onLaterPages=on_page)
+    buffer.seek(0)
+
+    response = HttpResponse(buffer.getvalue(), content_type="application/pdf")
+    response["Content-Disposition"] = 'attachment; filename="laredo_ist_employees.pdf"'
+
+    return response
+
+
+def employee_detail(request, employee_id):
+    employee = get_object_or_404(Employee, id=employee_id)
+    history_records = TicketHistory.objects.filter(changed_by=employee.full_name).order_by("-timestamp")
+
+    context = {
+        "employee": employee,
+        "history_records": history_records,
+    }
+
+
+    return render(request, "tickets/employee_detail.html", context)
