@@ -94,3 +94,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # --- Session --------------------------------------------------------------
 SESSION_COOKIE_AGE    = 28800   # 8 hours
 SESSION_COOKIE_SECURE = False   # set True in production (HTTPS only)
+
+MEDIA_URL  = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+ATTACHMENT_ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+ATTACHMENT_MAX_SIZE_MB    = 5

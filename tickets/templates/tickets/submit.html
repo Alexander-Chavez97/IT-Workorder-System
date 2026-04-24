@@ -15,7 +15,7 @@
 {% endif %}
 
 <div class="card">
-  <form method="POST" id="ticketForm">
+  <form method="POST" id="ticketForm" enctype="multipart/form-data">
     {% csrf_token %}
 
     <!-- SECTION 1: Requestor Information -->
@@ -109,6 +109,63 @@
   </form>
 </div>
 
+<!-- 5 W's CONTEXT -->
+<div class="card" style="margin-top:4px">
+  <div class="sec" style="padding-bottom:20px">
+    <div class="sec-title">Additional Context
+      <span style="font-weight:400;color:var(--steel);font-family:'IBM Plex Sans',sans-serif;font-size:11px;margin-left:8px">(optional — helps IST resolve faster)</span>
+    </div>
+
+    <div class="five-w-grid">
+
+      <div class="w-block">
+        <div class="w-label"><span class="w-letter">WHEN</span> did this start? <span class="req">*</span></div>
+        <div class="fld" style="margin-bottom:0">
+          {{ form.when_started }}
+          {% if form.when_started.errors %}
+            <div style="font-size:11px;color:var(--red-2);margin-top:4px">{{ form.when_started.errors.0 }}</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="w-block">
+        <div class="w-label"><span class="w-letter">WHO</span> else is affected? <span style="font-size:9px;color:var(--steel)">(optional)</span></div>
+        <div class="fld" style="margin-bottom:0">
+          {{ form.affected_users }}
+        </div>
+      </div>
+
+      <div class="w-block w-full">
+        <div class="w-label"><span class="w-letter">WHY</span> is this urgent? What work is blocked? <span class="req">*</span></div>
+        <div class="fld" style="margin-bottom:0">
+          {{ form.business_impact }}
+          {% if form.business_impact.errors %}
+            <div style="font-size:11px;color:var(--red-2);margin-top:4px">{{ form.business_impact.errors.0 }}</div>
+          {% endif %}
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ATTACHMENTS -->
+<div class="card" style="margin-top:4px">
+  <div class="sec" style="padding-bottom:20px">
+    <div class="sec-title">Screenshots <span style="font-weight:400;color:var(--steel)">(optional)</span></div>
+    <p style="font-size:12px;color:var(--steel-2);margin-bottom:12px">
+      Attach up to 5 screenshots to help IST identify the issue. Accepted formats: JPG, PNG, GIF, WEBP.
+    </p>
+    <div class="fld" style="margin-bottom:0">
+      <label for="attachments">Select Images</label>
+      <input type="file" id="attachments" name="attachments"
+             accept="image/jpeg,image/png,image/gif,image/webp"
+             multiple style="padding:8px">
+    </div>
+    <div id="filePreview" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:12px"></div>
+  </div>
+</div>
+
 <div style="display:flex;justify-content:flex-end;gap:10px;padding:12px 0 0">
   <a href="{% url 'submit_ticket' %}" class="btn btn-ghost">Clear</a>
   <button type="submit" form="ticketForm" class="btn btn-primary">Submit Work Order &rarr;</button>
@@ -117,6 +174,27 @@
 
 {% block extra_head %}
 <style>
+.five-w-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.w-full { grid-column: 1 / -1; }
+.w-block { display: flex; flex-direction: column; gap: 6px; }
+.w-label {
+  font-size: 11px;
+  color: var(--steel-2);
+  font-weight: 500;
+}
+.w-letter {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--gold);
+  letter-spacing: .08em;
+  margin-right: 4px;
+}
+
 .cascade-arrow {
   text-align: center;
   color: var(--gold);
@@ -206,5 +284,26 @@ function _reset(sel, placeholder, disable) {
   sel.className = "";
   sel.disabled  = disable;
 }
+
+document.getElementById("attachments").addEventListener("change", function() {
+  const preview = document.getElementById("filePreview");
+  preview.innerHTML = "";
+  Array.from(this.files).slice(0,5).forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const wrap = document.createElement("div");
+      wrap.style.cssText = "position:relative;width:90px;height:90px;border-radius:6px;overflow:hidden;border:1px solid rgba(201,168,76,.3)";
+      const img = document.createElement("img");
+      img.src = e.target.result;
+      img.style.cssText = "width:100%;height:100%;object-fit:cover";
+      const lbl = document.createElement("div");
+      lbl.textContent = file.name.length > 12 ? file.name.slice(0,10)+"..." : file.name;
+      lbl.style.cssText = "position:absolute;bottom:0;left:0;right:0;background:rgba(8,17,31,.75);font-size:9px;color:#eef2f8;padding:3px 4px;white-space:nowrap;overflow:hidden";
+      wrap.appendChild(img); wrap.appendChild(lbl);
+      preview.appendChild(wrap);
+    };
+    reader.readAsDataURL(file);
+  });
+});
 </script>
 {% endblock %}

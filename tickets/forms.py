@@ -50,6 +50,7 @@ class TicketSubmitForm(forms.ModelForm):
             "category", "subtype", "issue_type",
             "title", "description",
             "asset_tag", "location", "phone_ext",
+            "affected_users", "when_started", "business_impact",
         ]
         widgets = {
             "name":        forms.TextInput(attrs={
@@ -86,4 +87,28 @@ class TicketSubmitForm(forms.ModelForm):
                 "placeholder": "e.g. x3412",
                 "id": "f_ext",
             }),
+            "affected_users": forms.Textarea(attrs={
+                "placeholder": "e.g. Entire Finance dept, 3 employees on 2nd floor, all staff sharing printer LRD-PRN-04...",
+                "id": "f_affected",
+                "rows": 2,
+            }),
+            "when_started": forms.TextInput(attrs={
+                "placeholder": "e.g. This morning around 9am, Since last Friday, Just now",
+                "id": "f_when",
+            }),
+            "business_impact": forms.Textarea(attrs={
+                "placeholder": "e.g. Cannot process payroll, patients are waiting, cannot access dispatch system...",
+                "id": "f_impact",
+                "rows": 2,
+            }),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # WHEN and WHY are required — employees must answer at least these two
+        self.fields["when_started"].required    = True
+        self.fields["when_started"].label       = "When did this start? *"
+        self.fields["business_impact"].required = True
+        self.fields["business_impact"].label    = "What work is blocked / why is this urgent? *"
+        self.fields["affected_users"].required  = False
+        self.fields["affected_users"].label     = "Who else is affected? (optional)"

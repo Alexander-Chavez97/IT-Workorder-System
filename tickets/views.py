@@ -20,7 +20,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse, HttpResponse
 
 from .forms import TicketSubmitForm
-from .models import Employee, EmployeeRole, Ticket, TicketStatus, TicketHistory, HistoryAction
+from .models import Employee, EmployeeRole, Ticket, TicketStatus, TicketHistory, HistoryAction, TicketAttachment
 from .routing import (
     RoutingEngine,
     TIER_META,
@@ -130,7 +130,7 @@ def submit_ticket(request):
     emp = _get_logged_in_employee(request)
 
     if request.method == "POST":
-        form = TicketSubmitForm(request.POST)
+        form = TicketSubmitForm(request.POST, request.FILES)
         if form.is_valid():
             ticket = form.save(commit=False)
             ticket.submitter = emp
@@ -167,6 +167,17 @@ def submit_ticket(request):
                 priority_after=ticket.routing_effective_priority,
                 note="Ticket submitted via self-service portal.",
             )
+
+            # Handle screenshot attachments (up to 5)
+            files = request.FILES.getlist("attachments")
+            for f in files[:5]:
+                if f.content_type in ("image/jpeg","image/png","image/gif","image/webp"):
+                    att = TicketAttachment(
+                        ticket=ticket,
+                        uploaded_by=ticket.name,
+                        filename=f.name,
+                    )
+                    att.file.save(f.name, f, save=True)
 
             return redirect("ticket_success", ticket_id=ticket.ticket_id)
     else:
@@ -307,10 +318,12 @@ def ticket_lookup(request):
         except Ticket.DoesNotExist:
             error = f'No ticket found with ID "{query}". Please check the reference number and try again.'
 
+    attachments = ticket.attachments.all() if ticket else []
     return render(request, "tickets/ticket_lookup.html", {
-        "ticket": ticket,
-        "error":  error,
-        "query":  query,
+        "ticket":      ticket,
+        "error":       error,
+        "query":       query,
+        "attachments": attachments,
     })
 
 
@@ -376,12 +389,25 @@ def ticket_detail(request, ticket_id):
                     note=note_text,
                 )
 
+        elif action == "upload_attachment":
+            files = request.FILES.getlist("attachments")
+            for f in files[:5]:
+                if f.content_type in ("image/jpeg","image/png","image/gif","image/webp"):
+                    att = TicketAttachment(
+                        ticket=ticket,
+                        uploaded_by=changed_by,
+                        filename=f.name,
+                    )
+                    att.file.save(f.name, f, save=True)
+
         return redirect("ticket_detail", ticket_id=ticket_id)
 
-    history = ticket.history.all()
+    history     = ticket.history.all()
+    attachments = ticket.attachments.all()
     return render(request, "tickets/ticket_detail.html", {
-        "ticket":  ticket,
-        "history": history,
+        "ticket":      ticket,
+        "history":     history,
+        "attachments": attachments,
     })
 
 

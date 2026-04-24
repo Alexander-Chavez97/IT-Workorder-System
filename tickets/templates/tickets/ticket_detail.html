@@ -41,6 +41,31 @@
         {% endif %}
       </div>
 
+      <!-- 5 W's CONTEXT -->
+      {% if ticket.affected_users or ticket.when_started or ticket.business_impact %}
+      <div class="sec" style="padding-bottom:20px">
+        <div class="sec-title">Additional Context</div>
+        {% if ticket.affected_users %}
+        <div class="mrow" style="align-items:flex-start">
+          <span class="mk"><span style="color:var(--gold);font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600">WHO</span> Affected</span>
+          <span class="mv" style="white-space:pre-wrap;line-height:1.6">{{ ticket.affected_users }}</span>
+        </div>
+        {% endif %}
+        {% if ticket.when_started %}
+        <div class="mrow">
+          <span class="mk"><span style="color:var(--gold);font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600">WHEN</span> Started</span>
+          <span class="mv">{{ ticket.when_started }}</span>
+        </div>
+        {% endif %}
+        {% if ticket.business_impact %}
+        <div class="mrow" style="align-items:flex-start">
+          <span class="mk"><span style="color:var(--gold);font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600">WHY</span> Urgent</span>
+          <span class="mv" style="white-space:pre-wrap;line-height:1.6">{{ ticket.business_impact }}</span>
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+
       <div class="sec" style="padding-bottom:20px">
         <div class="sec-title">Priority & Status</div>
         <div class="mrow"><span class="mk">Effective Priority</span>
@@ -122,6 +147,35 @@
           <button type="submit" name="action" value="add_note" class="btn btn-ghost btn-sm">
             Save Note
           </button>
+        </form>
+      </div>
+
+      <!-- SCREENSHOTS -->
+      <div class="sec" style="padding-bottom:20px">
+        <div class="sec-title">Screenshots</div>
+        {% if attachments %}
+        <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px">
+          {% for att in attachments %}
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+            <a href="{{ att.file.url }}" target="_blank"
+               style="display:block;width:100px;height:100px;border-radius:6px;overflow:hidden;border:1px solid rgba(201,168,76,.25)">
+              <img src="{{ att.file.url }}" alt="{{ att.filename }}" style="width:100%;height:100%;object-fit:cover">
+            </a>
+            <span style="font-size:9px;color:var(--steel);max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ att.filename }}</span>
+            <span style="font-size:9px;color:var(--steel)">{{ att.uploaded_by }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+          <div style="font-size:12px;color:var(--steel);margin-bottom:12px">No screenshots attached yet.</div>
+        {% endif %}
+        <form method="POST" enctype="multipart/form-data">
+          {% csrf_token %}
+          <div class="fld" style="margin-bottom:8px">
+            <label style="font-size:11px;color:var(--steel-2)">Add Screenshots (JPG, PNG, GIF, WEBP)</label>
+            <input type="file" name="attachments" accept="image/jpeg,image/png,image/gif,image/webp" multiple style="padding:6px">
+          </div>
+          <button type="submit" name="action" value="upload_attachment" class="btn btn-ghost btn-sm">Upload</button>
         </form>
       </div>
     </div>

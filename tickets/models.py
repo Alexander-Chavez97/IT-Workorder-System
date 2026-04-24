@@ -124,6 +124,23 @@ class Ticket(models.Model):
     location    = models.CharField("Location",   max_length=80, blank=True)
     phone_ext   = models.CharField("Phone Ext",  max_length=10, blank=True)
 
+    # 5 W's — additional context fields
+    affected_users  = models.TextField(
+        "Who Else Is Affected",
+        blank=True,
+        help_text="List other employees, teams, or systems impacted by this issue.",
+    )
+    when_started    = models.CharField(
+        "When Did This Start",
+        max_length=120, blank=True,
+        help_text="e.g. 'This morning around 9am', 'Since last Friday', 'Just now'",
+    )
+    business_impact = models.TextField(
+        "Business Impact / Why It Matters",
+        blank=True,
+        help_text="Describe the operational impact — what work is blocked, who is waiting, any deadlines affected.",
+    )
+
     # User priority selection
     user_priority = models.IntegerField(
         "User-Selected Priority",
@@ -259,3 +276,43 @@ class TicketHistory(models.Model):
     @property
     def priority_after_label(self):
         return PRIORITY_LABELS.get(self.priority_after, "") if self.priority_after else ""
+    
+# ---------------------------------------------------------------------------
+# TICKET ATTACHMENT MODEL
+# ---------------------------------------------------------------------------
+
+def attachment_upload_path(instance, filename):
+    import os
+    ext = os.path.splitext(filename)[1].lower()
+    safe_name = f"{instance.ticket.ticket_id}_{instance.pk or 'new'}{ext}"
+    return f"attachments/{instance.ticket.ticket_id}/{safe_name}"
+
+
+class TicketAttachment(models.Model):
+    ticket      = models.ForeignKey(
+        Ticket, on_delete=models.CASCADE, related_name="attachments"
+    )
+    file        = models.ImageField(upload_to=attachment_upload_path)
+    filename    = models.CharField(max_length=255, blank=True)
+    uploaded_by = models.CharField(max_length=120, blank=True)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["uploaded_at"]
+        verbose_name = "Attachment"
+        verbose_name_plural = "Attachments"
+
+    def __str__(self):
+        return f"{self.ticket.ticket_id} — {self.filename}"
+
+    def save(self, *args, **kwargs):
+        if not self.filename and self.file:
+            import os
+            self.filename = os.path.basename(self.file.name)
+        super().save(*args, **kwargs)
+
+    @property
+    def is_image(self):
+        return self.filename.lower().endswith(
+            ('.jpg', '.jpeg', '.png', '.gif', '.webp')
+        )
