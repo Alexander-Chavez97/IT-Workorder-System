@@ -106,64 +106,58 @@
       </div>
     </div>
 
+    <!-- SECTION 3: 5 W's -->
+    <div class="sec">
+      <div class="sec-title">Additional Context
+        <span style="font-weight:400;color:var(--steel);font-family:'IBM Plex Sans',sans-serif;font-size:11px;margin-left:8px">(helps IST resolve faster)</span>
+      </div>
+
+      <div class="five-w-grid">
+        <div class="w-block">
+          <div class="w-label"><span class="w-letter">WHEN</span> did this start? <span class="req">*</span></div>
+          <div class="fld" style="margin-bottom:0">
+            {{ form.when_started }}
+            {% if form.when_started.errors %}
+              <div style="font-size:11px;color:var(--red-2);margin-top:4px">{{ form.when_started.errors.0 }}</div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="w-block">
+          <div class="w-label"><span class="w-letter">WHO</span> else is affected? <span style="font-size:9px;color:var(--steel)">(optional)</span></div>
+          <div class="fld" style="margin-bottom:0">
+            {{ form.affected_users }}
+          </div>
+        </div>
+
+        <div class="w-block w-full">
+          <div class="w-label"><span class="w-letter">WHY</span> is this urgent? What work is blocked? <span class="req">*</span></div>
+          <div class="fld" style="margin-bottom:0">
+            {{ form.business_impact }}
+            {% if form.business_impact.errors %}
+              <div style="font-size:11px;color:var(--red-2);margin-top:4px">{{ form.business_impact.errors.0 }}</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 4: Screenshots -->
+    <div class="sec" style="padding-bottom:20px">
+      <div class="sec-title">Screenshots <span style="font-weight:400;color:var(--steel)">(optional)</span></div>
+      <p style="font-size:12px;color:var(--steel-2);margin-bottom:12px">
+        Attach up to 5 screenshots to help IST identify the issue. Accepted formats: JPG, PNG, GIF, WEBP.
+      </p>
+      <div class="fld" style="margin-bottom:0">
+        <label for="attachments">Select Images</label>
+        <input type="file" id="attachments" name="attachments"
+               accept="image/jpeg,image/png,image/gif,image/webp"
+               multiple style="padding:8px">
+      </div>
+      <div id="filePreview" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:12px"></div>
+    </div>
+
   </form>
-</div>
-
-<!-- 5 W's CONTEXT -->
-<div class="card" style="margin-top:4px">
-  <div class="sec" style="padding-bottom:20px">
-    <div class="sec-title">Additional Context
-      <span style="font-weight:400;color:var(--steel);font-family:'IBM Plex Sans',sans-serif;font-size:11px;margin-left:8px">(optional — helps IST resolve faster)</span>
-    </div>
-
-    <div class="five-w-grid">
-
-      <div class="w-block">
-        <div class="w-label"><span class="w-letter">WHEN</span> did this start? <span class="req">*</span></div>
-        <div class="fld" style="margin-bottom:0">
-          {{ form.when_started }}
-          {% if form.when_started.errors %}
-            <div style="font-size:11px;color:var(--red-2);margin-top:4px">{{ form.when_started.errors.0 }}</div>
-          {% endif %}
-        </div>
-      </div>
-
-      <div class="w-block">
-        <div class="w-label"><span class="w-letter">WHO</span> else is affected? <span style="font-size:9px;color:var(--steel)">(optional)</span></div>
-        <div class="fld" style="margin-bottom:0">
-          {{ form.affected_users }}
-        </div>
-      </div>
-
-      <div class="w-block w-full">
-        <div class="w-label"><span class="w-letter">WHY</span> is this urgent? What work is blocked? <span class="req">*</span></div>
-        <div class="fld" style="margin-bottom:0">
-          {{ form.business_impact }}
-          {% if form.business_impact.errors %}
-            <div style="font-size:11px;color:var(--red-2);margin-top:4px">{{ form.business_impact.errors.0 }}</div>
-          {% endif %}
-        </div>
-      </div>
-
-    </div>
-  </div>
-</div>
-
-<!-- ATTACHMENTS -->
-<div class="card" style="margin-top:4px">
-  <div class="sec" style="padding-bottom:20px">
-    <div class="sec-title">Screenshots <span style="font-weight:400;color:var(--steel)">(optional)</span></div>
-    <p style="font-size:12px;color:var(--steel-2);margin-bottom:12px">
-      Attach up to 5 screenshots to help IST identify the issue. Accepted formats: JPG, PNG, GIF, WEBP.
-    </p>
-    <div class="fld" style="margin-bottom:0">
-      <label for="attachments">Select Images</label>
-      <input type="file" id="attachments" name="attachments"
-             accept="image/jpeg,image/png,image/gif,image/webp"
-             multiple style="padding:8px">
-    </div>
-    <div id="filePreview" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:12px"></div>
-  </div>
 </div>
 
 <div style="display:flex;justify-content:flex-end;gap:10px;padding:12px 0 0">
@@ -181,11 +175,7 @@
 }
 .w-full { grid-column: 1 / -1; }
 .w-block { display: flex; flex-direction: column; gap: 6px; }
-.w-label {
-  font-size: 11px;
-  color: var(--steel-2);
-  font-weight: 500;
-}
+.w-label { font-size: 11px; color: var(--steel-2); font-weight: 500; }
 .w-letter {
   font-family: 'IBM Plex Mono', monospace;
   font-size: 10px;
@@ -194,7 +184,6 @@
   letter-spacing: .08em;
   margin-right: 4px;
 }
-
 .cascade-arrow {
   text-align: center;
   color: var(--gold);
@@ -225,24 +214,19 @@ function onCategoryChange() {
   const cat      = document.getElementById("f_cat").value;
   const subSel   = document.getElementById("f_sub");
   const issueSel = document.getElementById("f_issue");
-
   _reset(subSel,   "— Select a sub-type —",       true);
   _reset(issueSel, "— Select a sub-type first —", true);
   document.getElementById("subHint").textContent   = "";
   document.getElementById("issueHint").textContent = "";
   document.getElementById("arrow1").classList.remove("active");
   document.getElementById("arrow2").classList.remove("active");
-
   if (!cat || !CASCADE[cat]) return;
-
   const subtypes = CASCADE[cat].subtypes;
   subtypes.forEach(([slug, label]) => {
     const opt = document.createElement("option");
-    opt.value = slug;
-    opt.textContent = label;
+    opt.value = slug; opt.textContent = label;
     subSel.appendChild(opt);
   });
-
   subSel.disabled = false;
   subSel.className = "ready";
   document.getElementById("subHint").textContent = subtypes.length + " options";
@@ -254,25 +238,18 @@ function onSubtypeChange() {
   const sub      = document.getElementById("f_sub").value;
   const subSel   = document.getElementById("f_sub");
   const issueSel = document.getElementById("f_issue");
-
   _reset(issueSel, "— Select an issue type —", true);
   document.getElementById("issueHint").textContent = "";
   document.getElementById("arrow2").classList.remove("active");
-
   if (!sub) { subSel.className = "ready"; return; }
-
   subSel.className = "done";
-
   const issueTypes = CASCADE[cat]?.issue_types?.[sub];
   if (!issueTypes || issueTypes.length === 0) return;
-
   issueTypes.forEach(([slug, label]) => {
     const opt = document.createElement("option");
-    opt.value = slug;
-    opt.textContent = label;
+    opt.value = slug; opt.textContent = label;
     issueSel.appendChild(opt);
   });
-
   issueSel.disabled = false;
   issueSel.className = "ready";
   document.getElementById("issueHint").textContent = issueTypes.length + " options";

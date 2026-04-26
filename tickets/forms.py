@@ -48,15 +48,17 @@ class TicketSubmitForm(forms.ModelForm):
         widget=forms.TextInput(attrs={
             "placeholder": "e.g. This morning around 9am, Since last Friday, Just now",
             "id": "f_when",
+            "name": "when_started",
         }),
     )
     business_impact = forms.CharField(
         label="What work is blocked / why is this urgent?",
         required=True,
         widget=forms.Textarea(attrs={
-            "placeholder": "e.g. Cannot process payroll, patients are waiting, cannot access dispatch system...",
+            "placeholder": "e.g. Cannot process payroll, patients are waiting...",
             "id": "f_impact",
             "rows": 2,
+            "name": "business_impact",
         }),
     )
     affected_users = forms.CharField(
@@ -123,8 +125,14 @@ class TicketSubmitForm(forms.ModelForm):
 
     def clean_title(self):           return self._strip("title")
     def clean_description(self):     return self._strip("description")
-    def clean_when_started(self):    return self._strip("when_started")
-    def clean_business_impact(self): return self._strip("business_impact")
+    def clean_when_started(self):    
+        val = self.cleaned_data.get("when_started", "")
+        print(f"DEBUG clean_when_started: value: '{val}'")
+        return self._strip("when_started")
+    def clean_business_impact(self):
+        val = self.cleaned_data.get("business_impact", "")
+        print(f"DEBUG clean_business_impact called, value: '{val}'")
+        return strip_tags(val or "")
     def clean_affected_users(self):  return self._strip("affected_users")
     def clean_location(self):        return self._strip("location")
     def clean_asset_tag(self):       return self._strip("asset_tag")
