@@ -21,6 +21,12 @@ SESSION_COOKIE_SECURE   = True
 CSRF_COOKIE_SECURE      = True
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
+# HTTPS enforcement
+SECURE_SSL_REDIRECT             = True   # redirect all HTTP → HTTPS
+SECURE_HSTS_SECONDS             = 31536000  # 1 year HSTS header
+SECURE_HSTS_INCLUDE_SUBDOMAINS  = True
+SECURE_HSTS_PRELOAD             = True
+
 # --- Database (Render PostgreSQL) -----------------------------------------
 _database_url = os.environ.get("DATABASE_URL")
 

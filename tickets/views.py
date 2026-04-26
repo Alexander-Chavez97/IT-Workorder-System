@@ -21,6 +21,10 @@ from django.http import JsonResponse, HttpResponse
 
 from .forms import TicketSubmitForm
 from .models import Employee, EmployeeRole, Ticket, TicketStatus, TicketHistory, HistoryAction, TicketAttachment
+
+# Security
+from axes.decorators import axes_dispatch
+from axes.helpers    import get_lockout_response
 from .routing import (
     RoutingEngine,
     TIER_META,
@@ -77,10 +81,14 @@ def _get_logged_in_employee(request):
 # EMPLOYEE LOGIN / LOGOUT
 # ---------------------------------------------------------------------------
 
+@axes_dispatch
 def employee_login(request):
     """
     GET  — show login form.
-    POST — validate employee_id + email + password against Employee table.
+    POST — validate employee_id + email + password.
+
+    django-axes tracks failed attempts by employee_id + IP.
+    After 5 failures the account is locked for 1 hour.
     """
     # Already logged in → go to submit form
     if request.session.get("employee_pk"):
@@ -96,16 +104,31 @@ def employee_login(request):
         try:
             emp = Employee.objects.get(employee_id=emp_id, is_active=True)
             if emp.email.lower() == email and emp.check_password(password):
-                # Store minimal session data
+                # Success — clear any recorded failures and open session
+                from axes.utils import reset_request
+                reset_request(request)
                 request.session["employee_pk"]   = emp.pk
                 request.session["employee_id"]   = emp.employee_id
                 request.session["employee_name"] = emp.full_name
                 request.session["employee_role"] = emp.role
-                request.session.set_expiry(28800)   # 8-hour session
+                request.session.set_expiry(28800)
                 return redirect("submit_ticket")
             else:
+                # Record failed attempt via Django's auth signal (axes listens to this)
+                from django.contrib.auth.signals import user_login_failed
+                user_login_failed.send(
+                    sender=__name__,
+                    credentials={"username": emp_id},
+                    request=request,
+                )
                 error = "Invalid Employee ID, email, or password."
         except Employee.DoesNotExist:
+            from django.contrib.auth.signals import user_login_failed
+            user_login_failed.send(
+                sender=__name__,
+                credentials={"username": emp_id},
+                request=request,
+            )
             error = "Invalid Employee ID, email, or password."
 
     return render(request, "tickets/login.html", {"error": error})
@@ -168,16 +191,22 @@ def submit_ticket(request):
                 note="Ticket submitted via self-service portal.",
             )
 
-            # Handle screenshot attachments (up to 5)
+            # Handle screenshot attachments — verified with Pillow (not just MIME)
             files = request.FILES.getlist("attachments")
             for f in files[:5]:
-                if f.content_type in ("image/jpeg","image/png","image/gif","image/webp"):
+                try:
+                    from PIL import Image
+                    img = Image.open(f)
+                    img.verify()          # raises if file is not a real image
+                    f.seek(0)             # reset after verify
                     att = TicketAttachment(
                         ticket=ticket,
                         uploaded_by=ticket.name,
                         filename=f.name,
                     )
                     att.file.save(f.name, f, save=True)
+                except Exception:
+                    pass   # silently skip invalid files
 
             return redirect("ticket_success", ticket_id=ticket.ticket_id)
     else:
@@ -392,13 +421,19 @@ def ticket_detail(request, ticket_id):
         elif action == "upload_attachment":
             files = request.FILES.getlist("attachments")
             for f in files[:5]:
-                if f.content_type in ("image/jpeg","image/png","image/gif","image/webp"):
+                try:
+                    from PIL import Image
+                    img = Image.open(f)
+                    img.verify()
+                    f.seek(0)
                     att = TicketAttachment(
                         ticket=ticket,
                         uploaded_by=changed_by,
                         filename=f.name,
                     )
                     att.file.save(f.name, f, save=True)
+                except Exception:
+                    pass
 
         return redirect("ticket_detail", ticket_id=ticket_id)
 
