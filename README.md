@@ -1,8 +1,8 @@
 # City of Laredo IST — IT Work Order System
 
-A web-based IT support ticketing system for City of Laredo employees to submit and track work orders. Built with Django and deployed on Render.
+A web-based IT support ticketing system for City of Laredo employees to submit and track work orders. Built with Django.
 
-🔗 **Live Site:** https://laredo-ist.onrender.com
+🔗 **Live Site:** https://plasticshrimp.pythonanywhere.com
 
 ---
 
@@ -48,6 +48,7 @@ Information Systems & Technology support staff. Has all department employee acce
 | Track a Ticket | `/track/` |
 | Admin Queue | `/admin-queue/` |
 | Ticket Detail | `/ticket/<ID>/` |
+| Manage Employees | `/manage_employees/` |
 | Export CSV | `/export/csv/` |
 | Export XLSX | `/export/xlsx/` |
 | Export PDF | `/export/pdf/` |
@@ -67,7 +68,7 @@ Full list of IST employee IDs: IST-1001 through IST-1006.
 
 ### IST Admin
 
-Full access to everything IST Staff can access. Intended for department administrators and supervisors.
+Full access to everything IST Staff can access.
 
 **Test credentials:**
 
@@ -95,19 +96,25 @@ Password:     ISTadmin2024!
 2. Select a **Category** — the Sub-Type dropdown will populate with relevant options.
 3. Select a **Sub-Type** — the Specific Issue dropdown will populate.
 4. Select a **Specific Issue**, write a brief summary and description, then click Submit.
-5. The system automatically assigns your ticket a priority, support team, and SLA deadline. You will see the full routing decision on the confirmation page.
+5. Fill in the **Additional Context** section — WHEN the issue started and WHY it is urgent are required.
+6. Optionally attach up to 5 screenshots.
+7. The system automatically assigns your ticket a priority, support team, and SLA deadline.
 
 ### Tracking a Ticket
 
-Go to **Track Ticket** in the nav bar and enter your ticket reference number (e.g. `TKT-0042`). You can see the current status, assigned team, priority, and the full routing decision.
+Go to **Track Ticket** in the nav bar and enter your ticket reference number (e.g. `TKT-0042`). You can see the current status, assigned team, priority, SLA, and any screenshots attached.
 
 ### Admin Queue (IST and Admin only)
 
-The admin queue shows all tickets across all departments. You can filter by status, priority, or department tier. Click any ticket to view full details, add internal notes, escalate the priority, or mark it resolved.
+The admin queue shows all tickets across all departments. You can filter by status, priority, or department tier. Click any ticket to view full details, add internal notes, escalate the priority, resolve it, or upload additional screenshots.
+
+### Manage Employees (IST and Admin only)
+
+View all IST staff and admin accounts, filter by role and status, view individual employee ticket history, and export the employee list as CSV, XLSX, or PDF.
 
 ### Exporting Reports (IST and Admin only)
 
-Use the CSV, XLSX, or PDF buttons above the queue table. Exports respect whatever filters are currently active — so if you filter to Critical open tickets, the export contains only those.
+Use the CSV, XLSX, or PDF buttons above the queue table. Exports respect whatever filters are currently active.
 
 ---
 
@@ -115,13 +122,22 @@ Use the CSV, XLSX, or PDF buttons above the queue table. Exports respect whateve
 
 When a ticket is submitted it passes through four automatic checks:
 
-**1. Department Tier** — The system classifies the submitting department. Utilities, Police, Fire, Traffic Safety, and Bridges are Critical Infrastructure and receive tighter SLAs and higher priority floors. City Manager offices are Executive. Health and public safety departments are Public Safety. Everything else is Standard.
+**1. Department Tier** — Utilities, Police, Fire, Traffic Safety, and Bridges are Critical Infrastructure with tighter SLAs and higher priority floors. City Manager offices are Executive. Health departments are Public Safety. Everything else is Standard.
 
-**2. Category → Team** — The category maps to a specific support team. Network, server, and security tickets from Critical Infrastructure departments are automatically forced to Critical (P1).
+**2. Category → Team** — The category maps to a specific support team automatically. Network, server, and security tickets from Critical Infrastructure departments are forced to Critical (P1).
 
-**3. Sub-Type** — Some sub-types escalate priority (Complete Outage bumps up). Others cap it (Password Reset is capped at Medium regardless of department).
+**3. Sub-Type** — Some sub-types escalate priority (Complete Outage bumps up). Others cap it (Password Reset is capped at Medium).
 
-**4. Keyword Detection** — The description is scanned for trigger words like "outage," "SCADA," "entire department," and "emergency." Matches escalate priority automatically. Spelling errors are tolerated — "emergancy" still triggers the same as "emergency."
+**4. Keyword Detection** — The description is scanned for trigger words like "outage," "SCADA," "entire department," and "emergency." Spelling errors are tolerated — "emergancy" still triggers the same as "emergency."
+
+---
+
+## Security Features
+
+- **Login rate limiting** — accounts lock for 1 hour after 5 failed login attempts
+- **Input sanitization** — HTML tags are stripped from all free-text fields before saving
+- **File upload validation** — screenshots are verified as real images using Pillow before being saved
+- **Security headers** — protections against clickjacking, MIME sniffing, and session hijacking
 
 ---
 
@@ -153,14 +169,14 @@ python manage.py seed_employees --reset
 
 ## Tech Stack
 
-|                       |                                  |
-| --------------------- | -------------------------------- |
-| Backend               | Django 4.2                       |
-| Database (local)      | SQLite                           |
-| Database (production) | PostgreSQL via Render            |
-| Static files          | WhiteNoise                       |
-| Server                | Gunicorn                         |
-| Exports               | openpyxl (XLSX), reportlab (PDF) |
+|              |                                  |
+| ------------ | -------------------------------- |
+| Backend      | Django 4.2                       |
+| Database     | SQLite (local)                   |
+| Hosting      | PythonAnywhere                   |
+| Static files | WhiteNoise                       |
+| Exports      | openpyxl (XLSX), reportlab (PDF) |
+| Security     | django-axes, Pillow              |
 
 ---
 
@@ -169,10 +185,10 @@ python manage.py seed_employees --reset
 ```
 laredo_ist/
 ├── tickets/
-│   ├── routing.py        ← 4-tier routing engine (no Django dependencies)
-│   ├── models.py         ← Employee, Ticket, TicketHistory models
-│   ├── views.py          ← controllers, auth decorators, export endpoints
-│   ├── forms.py
+│   ├── routing.py              ← 4-tier routing engine
+│   ├── models.py               ← Employee, Ticket, TicketHistory, TicketAttachment
+│   ├── views.py                ← controllers, auth, exports
+│   ├── forms.py                ← ticket submission form with 5 W's
 │   ├── urls.py
 │   ├── migrations/
 │   ├── management/
@@ -185,13 +201,12 @@ laredo_ist/
 │       ├── ticket_lookup.html
 │       ├── admin_queue.html
 │       ├── ticket_detail.html
+│       ├── manage_employees.html
+│       ├── employee_detail.html
 │       └── base.html
 ├── laredo_ist/
-│   ├── settings.py             ← base (local dev)
-│   └── settings_production.py ← production (Render)
-├── render.yaml
-├── Dockerfile
-├── Procfile
+│   ├── settings.py
+│   └── settings_production.py
 └── requirements.txt
 ```
 
