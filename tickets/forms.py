@@ -125,14 +125,8 @@ class TicketSubmitForm(forms.ModelForm):
 
     def clean_title(self):           return self._strip("title")
     def clean_description(self):     return self._strip("description")
-    def clean_when_started(self):    
-        val = self.cleaned_data.get("when_started", "")
-        print(f"DEBUG clean_when_started: value: '{val}'")
-        return self._strip("when_started")
-    def clean_business_impact(self):
-        val = self.cleaned_data.get("business_impact", "")
-        print(f"DEBUG clean_business_impact called, value: '{val}'")
-        return strip_tags(val or "")
+    def clean_when_started(self):    return self._strip("when_started")
+    def clean_business_impact(self): return self._strip("business_impact")
     def clean_affected_users(self):  return self._strip("affected_users")
     def clean_location(self):        return self._strip("location")
     def clean_asset_tag(self):       return self._strip("asset_tag")

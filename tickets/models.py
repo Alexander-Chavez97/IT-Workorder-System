@@ -124,23 +124,6 @@ class Ticket(models.Model):
     location    = models.CharField("Location",   max_length=80, blank=True)
     phone_ext   = models.CharField("Phone Ext",  max_length=10, blank=True)
 
-    # 5 W's — additional context fields
-    affected_users  = models.TextField(
-        "Who Else Is Affected",
-        blank=True,
-        help_text="List other employees, teams, or systems impacted by this issue.",
-    )
-    when_started    = models.CharField(
-        "When Did This Start",
-        max_length=120, blank=True,
-        help_text="e.g. 'This morning around 9am', 'Since last Friday', 'Just now'",
-    )
-    business_impact = models.TextField(
-        "Business Impact / Why It Matters",
-        blank=True,
-        help_text="Describe the operational impact — what work is blocked, who is waiting, any deadlines affected.",
-    )
-
     # User priority selection
     user_priority = models.IntegerField(
         "User-Selected Priority",
@@ -277,6 +260,7 @@ class TicketHistory(models.Model):
     def priority_after_label(self):
         return PRIORITY_LABELS.get(self.priority_after, "") if self.priority_after else ""
     
+
 # ---------------------------------------------------------------------------
 # TICKET ATTACHMENT MODEL
 # ---------------------------------------------------------------------------
