@@ -152,9 +152,7 @@ def submit_ticket(request):
     """
     emp = _get_logged_in_employee(request)
     if request.method == "POST":
-        print("DEBUG POST data:", dict(request.POST))
         form = TicketSubmitForm(request.POST, request.FILES)
-        print("DEBUG form errors after is_valid:", form.errors if not form.is_valid() else "VALID")
         
     if request.method == "POST":
         form = TicketSubmitForm(request.POST, request.FILES)
